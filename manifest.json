@@ -9,28 +9,29 @@
   "orientation": "portrait",
   "background_color": "#090d16",
   "theme_color": "#0f172a",
+  "categories": ["travel", "business", "finance"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%230f172a'/><path d='M400 128C396 116 384 108 370 108H142C128 108 116 116 112 128L64 256v170c0 12 10 22 22 22h22c12 0 22-10 22-22v-22h256v22c0 12 10 22 22 22h22c12 0 22-10 22-22V256l-48-128zM146 150h220l22 64H124l22-64zm256 214H110v-99h292v99z' fill='%23f59e0b'/></svg>",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Circle-icons-car.svg/192px-Circle-icons-car.svg.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Circle-icons-car.svg/512px-Circle-icons-car.svg.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
   "screenshots": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1920'><rect width='1080' height='1920' fill='%23090d16'/><text x='540' y='960' fill='%23f59e0b' font-size='60' text-anchor='middle' font-family='sans-serif'>Aadesh Tours Udaipur</text></svg>",
-      "sizes": "1080x1920",
-      "type": "image/svg+xml",
+      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Circle-icons-car.svg/512px-Circle-icons-car.svg.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "form_factor": "narrow",
-      "label": "Mobile Dashboard"
-    },
-    {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><rect width='1920' height='1080' fill='%23090d16'/><text x='960' y='540' fill='%23f59e0b' font-size='60' text-anchor='middle' font-family='sans-serif'>Aadesh Tours Udaipur</text></svg>",
-      "sizes": "1920x1080",
-      "type": "image/svg+xml",
-      "form_factor": "wide",
-      "label": "Desktop View"
+      "label": "Aadesh Tours Dashboard"
     }
   ]
 }
