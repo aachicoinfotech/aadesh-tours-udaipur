@@ -1,8 +1,8 @@
 // js/views/billing-view.js
-// Aadesh Tours Udaipur - Billing & Customer Ledger Controller (Phase 29 Fixed)
+// Aadesh Tours Udaipur - Billing & Customer Ledger Controller (Phase 29 - Clean Fix)
 
 import { getAllInvoices, recordInvoicePayment } from "../services/invoice-service.js";
-import { getAllCustomers, updateCustomerBalance } from "../services/customer-service.js";
+import { getAllCustomers } from "../services/customer-service.js";
 import { addGallaTransaction } from "../services/galla-service.js";
 import { CASHFLOW_CATEGORIES } from "../config/constants.js";
 import { exportInvoiceToPdf } from "../exporters/pdf-exporter.js";
@@ -19,21 +19,20 @@ export async function renderBillingView(containerEl, onNavigate) {
     getAllCustomers()
   ]);
 
-  let activeFilter = "ALL"; // 'ALL', 'UNPAID', 'PAID', 'PARTIES'
+  let activeFilter = "ALL";
   let searchQuery = "";
 
   const renderContent = () => {
-    // Financial rollups
     const totalBilled = invoices.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
     const totalDue = invoices.reduce((sum, inv) => sum + (Number(inv.balanceDue) || 0), 0);
     const totalCollected = totalBilled - totalDue;
 
-    // Filter logic
-    let filteredInvoices = invoices.filter(inv => {
-      const matchesSearch = 
-        (inv.invoiceNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (inv.customerName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (inv.dutySlipNumber || "").toLowerCase().includes(searchQuery.toLowerCase());
+    const filteredInvoices = invoices.filter(inv => {
+      const q = searchQuery.toLowerCase();
+      const num = (inv.invoiceNumber || "").toLowerCase();
+      const name = (inv.customerName || "").toLowerCase();
+      const slip = (inv.dutySlipNumber || "").toLowerCase();
+      const matchesSearch = num.includes(q) || name.includes(q) || slip.includes(q);
 
       if (!matchesSearch) return false;
       if (activeFilter === "UNPAID") return Number(inv.balanceDue) > 0;
@@ -44,8 +43,14 @@ export async function renderBillingView(containerEl, onNavigate) {
     const unpaidCount = invoices.filter(i => Number(i.balanceDue) > 0).length;
     const paidCount = invoices.filter(i => Number(i.balanceDue) <= 0).length;
 
+    const allBtnClass = activeFilter === "ALL" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+    const unpaidBtnClass = activeFilter === "UNPAID" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+    const paidBtnClass = activeFilter === "PAID" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+    const partiesBtnClass = activeFilter === "PARTIES" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+
+    const mainBodyHtml = activeFilter === "PARTIES" ? renderPartiesLedger(customers) : renderInvoicesList(filteredInvoices);
+
     containerEl.innerHTML = `
-      <!-- Top Metrics Ribbon -->
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 class="text-xl font-black text-white tracking-wide">बिलिंग व पार्टी लेजर</h2>
@@ -53,36 +58,34 @@ export async function renderBillingView(containerEl, onNavigate) {
         </div>
       </div>
 
-      <!-- Financial Metric Cards -->
       <div class="grid grid-cols-3 gap-3">
         <div class="stat-metric">
           <div class="stat-label">कुल बिलिंग</div>
-          <div class="stat-value text-slate-100">₹${totalBilled.toLocaleString('en-IN')}</div>
+          <div class="stat-value text-slate-100">₹${totalBilled.toLocaleString("en-IN")}</div>
         </div>
         <div class="stat-metric">
           <div class="stat-label">कुल वसूली</div>
-          <div class="stat-value text-emerald-400">₹${totalCollected.toLocaleString('en-IN')}</div>
+          <div class="stat-value text-emerald-400">₹${totalCollected.toLocaleString("en-IN")}</div>
         </div>
         <div class="stat-metric border-rose-500/30 bg-rose-500/5">
           <div class="stat-label text-rose-400">मार्केट में बकाया</div>
-          <div class="stat-value text-rose-400">₹${totalDue.toLocaleString('en-IN')}</div>
+          <div class="stat-value text-rose-400">₹${totalDue.toLocaleString("en-IN")}</div>
         </div>
       </div>
 
-      <!-- Search & Segment Toggles -->
       <div class="vault-card space-y-3 p-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <div class="flex gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'ALL' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="ALL">
+            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${allBtnClass}" data-filter="ALL">
               सभी बिल (${invoices.length})
             </button>
-            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'UNPAID' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="UNPAID">
+            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${unpaidBtnClass}" data-filter="UNPAID">
               बकाया / Due (${unpaidCount})
             </button>
-            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'PAID' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="PAID">
+            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${paidBtnClass}" data-filter="PAID">
               पूर्ण चुकता (${paidCount})
             </button>
-            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'PARTIES' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="PARTIES">
+            <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${partiesBtnClass}" data-filter="PARTIES">
               होटल लेजर (${customers.length})
             </button>
           </div>
@@ -93,158 +96,141 @@ export async function renderBillingView(containerEl, onNavigate) {
         </div>
       </div>
 
-      <!-- Main Display Area: Invoices List or Parties Ledger -->
-      ${activeFilter === "PARTIES" ? renderPartiesLedger(customers) : renderInvoicesList(filteredInvoices)}
+      ${mainBodyHtml}
     `;
 
     bindBillingEvents();
   };
 
-  /**
-   * Sub-render: Invoices List
-   */
   const renderInvoicesList = (list) => {
     if (list.length === 0) {
-      return `
-        <div class="vault-card text-center p-8 text-slate-500 text-xs">
-          कोई इनवॉइस रिकॉर्ड नहीं मिला।
-        </div>
-      `;
+      return '<div class="vault-card text-center p-8 text-slate-500 text-xs">कोई इनवॉइस रिकॉर्ड नहीं मिला।</div>';
     }
 
-    return `
-      <div class="space-y-3">
-        ${list.map(inv => {
-          const isUnpaid = Number(inv.balanceDue) > 0;
-          const billing = inv.billingBreakdown || {};
-          const statusBadge = inv.paymentStatus || (isUnpaid ? 'DUE' : 'PAID');
-          const borderClass = isUnpaid ? 'border-l-rose-500' : 'border-l-emerald-500';
-          const typeBadge = inv.isGstInvoice ? 'GST INVOICE' : 'BILL OF SUPPLY';
+    const cardsHtml = list.map(inv => {
+      const isUnpaid = Number(inv.balanceDue) > 0;
+      const billing = inv.billingBreakdown || {};
+      const statusBadge = inv.paymentStatus || (isUnpaid ? "DUE" : "PAID");
+      const borderClass = isUnpaid ? "border-l-rose-500" : "border-l-emerald-500";
+      const badgeColor = isUnpaid ? "badge-danger" : "badge-active";
+      const typeBadge = inv.isGstInvoice ? "GST INVOICE" : "BILL OF SUPPLY";
+      const typeBadgeColor = inv.isGstInvoice ? "badge-info" : "badge-warning";
+      const custPhone = inv.customerPhone || "फोन नहीं";
+      const vehNum = inv.vehicleNumber || "टैक्सी";
+      const dropLoc = inv.dropLocation || "लोकल";
+      const billedKm = billing.billedKm || 0;
+      const days = billing.days || 1;
+      const ratePerKm = billing.ratePerKm || 0;
+      const balColor = isUnpaid ? "text-rose-400" : "text-slate-400";
 
-          return `
-            <div class="vault-card space-y-3 border-l-4 ${borderClass}">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono font-bold text-white text-sm">${inv.invoiceNumber}</span>
-                  <span class="badge-status ${inv.isGstInvoice ? 'badge-info' : 'badge-warning'}">
-                    ${typeBadge}
-                  </span>
-                  <span class="badge-status ${isUnpaid ? 'badge-danger' : 'badge-active'}">
-                    ${statusBadge}
-                  </span>
-                </div>
-                <div class="text-xs text-slate-400 font-mono">
-                  ${inv.invoiceDate} (स्लिप #${inv.dutySlipNumber})
-                </div>
-              </div>
+      let payBtnHtml = "";
+      if (isUnpaid) {
+        payBtnHtml = '<button class="btn btn-success text-xs py-1.5 px-3 btn-record-payment" data-inv="' + inv.invoiceNumber + '">भुगतान दर्ज करें (+ Pay)</button>';
+      }
 
-              <!-- Customer & Trip Spec -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-slate-950/40 p-2.5 rounded-lg">
-                <div>
-                  <span class="text-slate-400 block text-[11px]">पार्टी / ग्राहक:</span>
-                  <span class="font-bold text-slate-100 text-sm">${inv.customerName}</span>
-                  <span class="text-slate-400 block font-mono">${inv.customerPhone || 'फोन नहीं'}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400 block text-[11px]">गाड़ी व रूट:</span>
-                  <span class="font-mono font-bold text-slate-200">${inv.vehicleNumber || 'टैक्सी'}</span>
-                  <span class="text-slate-400 block">${inv.pickupLocation} ➔${inv.dropLocation || 'लोकल'}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400 block text-[11px]">किलोमीटर व दिन:</span>
-                  <span class="font-mono text-slate-200">${billing.billedKm \vert{}\vert{} 0} KM (${billing.days || 1} दिन)</span>
-                  <span class="text-slate-400 block">दर: ₹${billing.ratePerKm || 0}/KM</span>
-                </div>
-              </div>
-
-              <!-- Financial Summary Bar -->
-              <div class="flex flex-wrap items-center justify-between gap-3 text-xs px-1">
-                <div>
-                  <span class="text-slate-400">कुल बिल:</span>
-                  <span class="font-mono font-bold text-slate-100 text-sm">₹${inv.totalAmount}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400">जमा एडवांस:</span>
-                  <span class="font-mono text-emerald-400">₹${inv.advancePaid}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400">बकाया राशि:</span>
-                  <span class="font-mono font-black ${isUnpaid ? 'text-rose-400' : 'text-slate-400'} text-sm">
-                    ₹${inv.balanceDue}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Action Buttons Row -->
-              <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
-                <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-thermal-print" data-inv="${inv.invoiceNumber}">
-                  थर्मल पर्ची
-                </button>
-                <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-pdf-print" data-inv="${inv.invoiceNumber}">
-                  PDF इनवॉइस
-                </button>
-                ${isUnpaid ? `
-                  <button class="btn btn-success text-xs py-1.5 px-3 btn-record-payment" data-inv="${inv.invoiceNumber}">
-                    भुगतान दर्ज करें (+ Pay)
-                  </button>
-                ` : ''}
-              </div>
+      return `
+        <div class="vault-card space-y-3 border-l-4 ${borderClass}">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="font-mono font-bold text-white text-sm">${inv.invoiceNumber}</span>
+              <span class="badge-status ${typeBadgeColor}">${typeBadge}</span>
+              <span class="badge-status ${badgeColor}">${statusBadge}</span>
             </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+            <div class="text-xs text-slate-400 font-mono">
+              ${inv.invoiceDate} (स्लिप #${inv.dutySlipNumber})
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-slate-950/40 p-2.5 rounded-lg">
+            <div>
+              <span class="text-slate-400 block text-[11px]">पार्टी / ग्राहक:</span>
+              <span class="font-bold text-slate-100 text-sm">${inv.customerName}</span>
+              <span class="text-slate-400 block font-mono">${custPhone}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[11px]">गाड़ी व रूट:</span>
+              <span class="font-mono font-bold text-slate-200">${vehNum}</span>
+              <span class="text-slate-400 block">${inv.pickupLocation} ➔ ${dropLoc}</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block text-[11px]">किलोमीटर व दिन:</span>
+              <span class="font-mono text-slate-200">${billedKm} KM (${days} दिन)</span>
+              <span class="text-slate-400 block">दर: ₹${ratePerKm}/KM</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 text-xs px-1">
+            <div>
+              <span class="text-slate-400">कुल बिल:</span>
+              <span class="font-mono font-bold text-slate-100 text-sm">₹${inv.totalAmount}</span>
+            </div>
+            <div>
+              <span class="text-slate-400">जमा एडवांस:</span>
+              <span class="font-mono text-emerald-400">₹${inv.advancePaid}</span>
+            </div>
+            <div>
+              <span class="text-slate-400">बकाया राशि:</span>
+              <span class="font-mono font-black ${balColor} text-sm">₹${inv.balanceDue}</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
+            <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-thermal-print" data-inv="${inv.invoiceNumber}">
+              थर्मल पर्ची
+            </button>
+            <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-pdf-print" data-inv="${inv.invoiceNumber}">
+              PDF इनवॉइस
+            </button>
+            ${payBtnHtml}
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return '<div class="space-y-3">' + cardsHtml + '</div>';
   };
 
-  /**
-   * Sub-render: Customer & Hotel Party Ledger
-   */
   const renderPartiesLedger = (partyList) => {
     if (partyList.length === 0) {
-      return `
-        <div class="vault-card text-center p-8 text-slate-500 text-xs">
-          कोई पार्टी या ग्राहक पंजीकृत नहीं है।
-        </div>
-      `;
+      return '<div class="vault-card text-center p-8 text-slate-500 text-xs">कोई पार्टी या ग्राहक पंजीकृत नहीं है।</div>';
     }
 
-    return `
-      <div class="space-y-3">
-        ${partyList.map(c => {
-          const bal = Number(c.outstandingBalance) || 0;
-          const balText = bal > 0 ? ('बकाया: ₹' + bal.toLocaleString('en-IN')) : ('जमा: ₹' + Math.abs(bal).toLocaleString('en-IN'));
-          const balColor = bal > 0 ? 'text-rose-400' : 'text-emerald-400';
-          const businessTag = c.businessName ? '(' + c.businessName + ')' : '';
+    const rowsHtml = partyList.map(c => {
+      const bal = Number(c.outstandingBalance) || 0;
+      const balText = bal > 0 ? "बकाया: ₹" + bal.toLocaleString("en-IN") : "जमा: ₹" + Math.abs(bal).toLocaleString("en-IN");
+      const balColor = bal > 0 ? "text-rose-400" : "text-emerald-400";
+      const businessTag = c.businessName ? '<span class="text-xs text-amber-400">(' + c.businessName + ')</span>' : "";
+      const phoneText = c.phone || "-";
+      const tripsCount = c.totalTripsCompleted || 0;
+      const categoryTag = c.category || "PARTY";
 
-          return `
-            <div class="vault-card flex items-center justify-between p-3">
-              <div>
-                <div class="flex items-center gap-2">
-                  <span class="font-bold text-white text-sm">${c.name}</span>${businessTag ? `<span class="text-xs text-amber-400">${businessTag}</span>` : ''}
-                  <span class="badge-status badge-info text-[10px]">${c.category || 'PARTY'}</span>
-                </div>
-                <div class="text-xs text-slate-400 mt-0.5">
-                  फोन: <span class="font-mono text-slate-300">${c.phone || '-'}</span> | 
-                  कुल ट्रिप्स: <span class="font-mono text-slate-200">${c.totalTripsCompleted || 0}</span>
-                </div>
-              </div>
-
-              <div class="text-right">
-                <span class="text-[11px] text-slate-400 block">वर्तमान बैलेंस:</span>
-                <span class="font-mono font-black text-sm ${balColor}">
-                  ${balText}
-                </span>
-              </div>
+      return `
+        <div class="vault-card flex items-center justify-between p-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-white text-sm">${c.name}</span>
+              ${businessTag}
+              <span class="badge-status badge-info text-[10px]">${categoryTag}</span>
             </div>
-          `;
-        }).join('')}
-      </div>
-    `;
+            <div class="text-xs text-slate-400 mt-0.5">
+              फोन: <span class="font-mono text-slate-300">${phoneText}</span> | 
+              कुल ट्रिप्स: <span class="font-mono text-slate-200">${tripsCount}</span>
+            </div>
+          </div>
+
+          <div class="text-right">
+            <span class="text-[11px] text-slate-400 block">वर्तमान बैलेंस:</span>
+            <span class="font-mono font-black text-sm ${balColor}">
+              ${balText}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    return '<div class="space-y-3">' + rowsHtml + '</div>';
   };
 
-  /**
-   * Event Bindings
-   */
   const bindBillingEvents = () => {
     const modalContainer = document.getElementById("modal-container");
     const modalContent = document.getElementById("modal-content");
@@ -259,7 +245,6 @@ export async function renderBillingView(containerEl, onNavigate) {
       modalContent.innerHTML = "";
     };
 
-    // Filter Buttons
     containerEl.querySelectorAll(".bill-filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         activeFilter = btn.dataset.filter;
@@ -267,7 +252,6 @@ export async function renderBillingView(containerEl, onNavigate) {
       });
     });
 
-    // Search Input
     const searchInput = containerEl.querySelector("#bill-search-input");
     if (searchInput) {
       searchInput.addEventListener("input", (e) => {
@@ -275,10 +259,11 @@ export async function renderBillingView(containerEl, onNavigate) {
         const targetList = containerEl.querySelector(".space-y-3:last-child");
         if (targetList && activeFilter !== "PARTIES") {
           const filtered = invoices.filter(inv => {
-            const matches = 
-              (inv.invoiceNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (inv.customerName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-              (inv.dutySlipNumber || "").toLowerCase().includes(searchQuery.toLowerCase());
+            const q = searchQuery.toLowerCase();
+            const num = (inv.invoiceNumber || "").toLowerCase();
+            const name = (inv.customerName || "").toLowerCase();
+            const slip = (inv.dutySlipNumber || "").toLowerCase();
+            const matches = num.includes(q) || name.includes(q) || slip.includes(q);
             if (!matches) return false;
             if (activeFilter === "UNPAID") return Number(inv.balanceDue) > 0;
             if (activeFilter === "PAID") return Number(inv.balanceDue) <= 0;
@@ -291,7 +276,6 @@ export async function renderBillingView(containerEl, onNavigate) {
     }
 
     const bindCardActions = () => {
-      // PDF Print Action
       containerEl.querySelectorAll(".btn-pdf-print").forEach(btn => {
         btn.addEventListener("click", () => {
           const invNum = btn.dataset.inv;
@@ -300,7 +284,6 @@ export async function renderBillingView(containerEl, onNavigate) {
         });
       });
 
-      // Thermal Receipt Action
       containerEl.querySelectorAll(".btn-thermal-print").forEach(btn => {
         btn.addEventListener("click", () => {
           const invNum = btn.dataset.inv;
@@ -309,7 +292,6 @@ export async function renderBillingView(containerEl, onNavigate) {
         });
       });
 
-      // Record Payment Modal
       containerEl.querySelectorAll(".btn-record-payment").forEach(btn => {
         btn.addEventListener("click", () => {
           const invNum = btn.dataset.inv;
