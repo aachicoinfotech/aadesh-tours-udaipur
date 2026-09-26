@@ -1,16 +1,15 @@
 // js/views/dashboard-view.js
-// Aadesh Tours Udaipur - Dashboard & Galla Live Controller (Phase 27)
+// Aadesh Tours Udaipur - Dashboard & Galla Live Controller (Phase 27 - Fixed)
 
 import { 
   getDailyGalla, 
   addGallaTransaction, 
-  openDailyGalla, 
   closeDailyGalla,
   getTodayDateString 
 } from "../services/galla-service.js";
-import { getActiveTrips } from "../services/trip-service.js";
+import { getAllTrips } from "../services/trip-service.js";
 import { getAllExpenses } from "../services/expense-service.js";
-import { getDashboardComplianceSummary } from "../services/reminder-service.js";
+import * as reminderService from "../services/reminder-service.js";
 
 /**
  * 1. Render Complete Dashboard Screen
@@ -20,15 +19,41 @@ import { getDashboardComplianceSummary } from "../services/reminder-service.js";
 export async function renderDashboard(containerEl, onNavigate) {
   const todayStr = getTodayDateString();
   
-  // Fetch initial data in parallel
-  const [gallaResult, activeTrips, allExpenses, compliance] = await Promise.all([
-    getDailyGalla(todayStr),
-    getActiveTrips(),
-    getAllExpenses(),
-    getDashboardComplianceSummary()
+  // Safe Data Fetching in parallel
+  const [gallaResult, allTripsResult, allExpensesResult] = await Promise.all([
+    getDailyGalla(todayStr).catch(() => ({ success: false })),
+    getAllTrips().catch(() => []),
+    getAllExpenses().catch(() => [])
   ]);
 
-  const galla = gallaResult.success ? gallaResult.data : {
+  const allTrips = Array.isArray(allTripsResult) ? allTripsResult : [];
+  const activeTrips = allTrips.filter(t => t.status === "ACTIVE");
+  const allExpenses = Array.isArray(allExpensesResult) ? allExpensesResult : [];
+
+  // Compliance Alerts calculation
+  let totalAlerts = 0;
+  let hasUrgentAlerts = false;
+  try {
+    if (typeof reminderService.getDashboardComplianceSummary === "function") {
+      const summary = await reminderService.getDashboardComplianceSummary();
+      totalAlerts = summary.totalAlerts || 0;
+      hasUrgentAlerts = !!summary.hasUrgentAlerts;
+    } else if (typeof reminderService.getFleetComplianceReport === "function") {
+      const report = await reminderService.getFleetComplianceReport(30);
+      report.forEach(r => {
+        (r.documents || []).forEach(d => {
+          if (d.status === "EXPIRED" || d.status === "EXPIRING_SOON") {
+            totalAlerts++;
+            if (d.status === "EXPIRED") hasUrgentAlerts = true;
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.warn("Compliance check error:", err);
+  }
+
+  const galla = (gallaResult && gallaResult.success) ? gallaResult.data : {
     openingBalance: 0,
     totalCashIn: 0,
     totalCashOut: 0,
@@ -45,12 +70,12 @@ export async function renderDashboard(containerEl, onNavigate) {
   // Update Top Global Header live indicators
   const headerGallaAmount = document.getElementById("header-galla-amount");
   if (headerGallaAmount) {
-    headerGallaAmount.textContent = `₹${galla.expectedCashBalance.toLocaleString('en-IN')}`;
+    headerGallaAmount.textContent = `₹${(galla.expectedCashBalance || 0).toLocaleString('en-IN')}`;
   }
   const complianceBadge = document.getElementById("compliance-badge");
   if (complianceBadge) {
-    if (compliance.totalAlerts > 0) {
-      complianceBadge.textContent = compliance.totalAlerts;
+    if (totalAlerts > 0) {
+      complianceBadge.textContent = totalAlerts;
       complianceBadge.classList.remove("hidden");
       complianceBadge.classList.add("flex");
     } else {
@@ -74,19 +99,19 @@ export async function renderDashboard(containerEl, onNavigate) {
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <div class="stat-metric">
         <div class="stat-label">ओपनिंग रोकड़</div>
-        <div class="stat-value text-slate-200">₹${galla.openingBalance.toLocaleString('en-IN')}</div>
+        <div class="stat-value text-slate-200">₹${(galla.openingBalance || 0).toLocaleString('en-IN')}</div>
       </div>
       <div class="stat-metric">
         <div class="stat-label">कुल आवक (+ IN)</div>
-        <div class="stat-value text-emerald-400">+₹${galla.totalCashIn.toLocaleString('en-IN')}</div>
+        <div class="stat-value text-emerald-400">+₹${(galla.totalCashIn || 0).toLocaleString('en-IN')}</div>
       </div>
       <div class="stat-metric">
         <div class="stat-label">कुल जावक (- OUT)</div>
-        <div class="stat-value text-rose-400">-₹${galla.totalCashOut.toLocaleString('en-IN')}</div>
+        <div class="stat-value text-rose-400">-₹${(galla.totalCashOut || 0).toLocaleString('en-IN')}</div>
       </div>
       <div class="stat-metric border-amber-500/40 bg-amber-500/5">
         <div class="stat-label text-amber-400">गल्ला बैलेंस</div>
-        <div class="stat-value text-amber-400">₹${galla.expectedCashBalance.toLocaleString('en-IN')}</div>
+        <div class="stat-value text-amber-400">₹${(galla.expectedCashBalance || 0).toLocaleString('en-IN')}</div>
       </div>
     </div>
 
@@ -94,11 +119,9 @@ export async function renderDashboard(containerEl, onNavigate) {
     <div class="vault-card flex flex-wrap gap-2 items-center justify-between">
       <div class="flex gap-2">
         <button id="btn-quick-cash-in" class="btn btn-success text-xs sm:text-sm py-2 px-3">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           कैश जमा (+ IN)
         </button>
         <button id="btn-quick-cash-out" class="btn btn-danger text-xs sm:text-sm py-2 px-3">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/></svg>
           कैश निकासी (- OUT)
         </button>
       </div>
@@ -126,8 +149,8 @@ export async function renderDashboard(containerEl, onNavigate) {
       </div>
       <div class="stat-metric text-center cursor-pointer" id="kpi-rto-alerts">
         <div class="stat-label">दस्तावेज अलर्ट</div>
-        <div class="stat-value ${compliance.hasUrgentAlerts ? 'text-rose-500' : 'text-amber-400'}">
-          ${compliance.totalAlerts}
+        <div class="stat-value ${hasUrgentAlerts ? 'text-rose-500' : 'text-amber-400'}">
+          ${totalAlerts}
         </div>
       </div>
     </div>
@@ -206,7 +229,7 @@ export async function renderDashboard(containerEl, onNavigate) {
                   </td>
                   <td class="text-xs text-slate-400">${tx.remarks || '-'}</td>
                   <td style="text-align: right;" class="${tx.type === 'IN' ? 'tally-credit' : 'tally-debit'}">
-                    ${tx.type === 'IN' ? '+' : '-'}₹${tx.amount.toLocaleString('en-IN')}
+                    ${tx.type === 'IN' ? '+' : '-'}₹${(tx.amount || 0).toLocaleString('en-IN')}
                   </td>
                 </tr>
               `).join('')}
@@ -228,13 +251,11 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
   const modalContainer = document.getElementById("modal-container");
   const modalContent = document.getElementById("modal-content");
 
-  // Helper to open modal
   const openModal = (htmlContent) => {
     modalContent.innerHTML = htmlContent;
     modalContainer.classList.remove("hidden");
   };
 
-  // Helper to close modal
   const closeModal = () => {
     modalContainer.classList.add("hidden");
     modalContent.innerHTML = "";
@@ -245,9 +266,7 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
   if (btnIn) {
     btnIn.addEventListener("click", () => {
       openModal(`
-        <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
-          <span class="text-emerald-400 font-black">+</span> गल्ले में कैश जमा (Cash In)
-        </h3>
+        <h3 class="text-base font-bold text-white mb-3">गल्ले में कैश जमा (Cash In)</h3>
         <form id="form-cash-in" class="space-y-3">
           <div>
             <label class="form-label">रकम (Amount ₹) *</label>
@@ -274,8 +293,8 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
         </form>
       `);
 
-      document.getElementById("btn-modal-cancel").addEventListener("click", closeModal);
-      document.getElementById("form-cash-in").addEventListener("submit", async (e) => {
+      document.getElementById("btn-modal-cancel")?.addEventListener("click", closeModal);
+      document.getElementById("form-cash-in")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const amt = Number(document.getElementById("in-amount").value);
         const cat = document.getElementById("in-category").value;
@@ -300,9 +319,7 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
   if (btnOut) {
     btnOut.addEventListener("click", () => {
       openModal(`
-        <h3 class="text-base font-bold text-white mb-3 flex items-center gap-2">
-          <span class="text-rose-400 font-black">-</span> गल्ले से कैश निकासी (Cash Out)
-        </h3>
+        <h3 class="text-base font-bold text-white mb-3">गल्ले से कैश निकासी (Cash Out)</h3>
         <form id="form-cash-out" class="space-y-3">
           <div>
             <label class="form-label">रकम (Amount ₹) *</label>
@@ -330,8 +347,8 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
         </form>
       `);
 
-      document.getElementById("btn-modal-cancel").addEventListener("click", closeModal);
-      document.getElementById("form-cash-out").addEventListener("submit", async (e) => {
+      document.getElementById("btn-modal-cancel")?.addEventListener("click", closeModal);
+      document.getElementById("form-cash-out")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const amt = Number(document.getElementById("out-amount").value);
         const cat = document.getElementById("out-category").value;
@@ -357,10 +374,10 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
     btnCloseGalla.addEventListener("click", () => {
       openModal(`
         <h3 class="text-base font-bold text-white mb-2">शाम का गल्ला मिलान (Galla Closing)</h3>
-        <p class="text-xs text-slate-400 mb-4">दुकान/ऑफिस बढ़ाते समय गल्ले के भौतिक नोट गिनकर यहाँ दर्ज करें।</p>
+        <p class="text-xs text-slate-400 mb-4">गल्ले के भौतिक नोट गिनकर यहाँ दर्ज करें।</p>
         <div class="p-3 bg-slate-800 rounded-lg mb-3 flex justify-between items-center text-xs">
           <span class="text-slate-300">सिस्टम अनुसार होना चाहिए:</span>
-          <span class="font-mono font-bold text-amber-400 text-sm">₹${galla.expectedCashBalance.toLocaleString('en-IN')}</span>
+          <span class="font-mono font-bold text-amber-400 text-sm">₹${(galla.expectedCashBalance || 0).toLocaleString('en-IN')}</span>
         </div>
         <form id="form-close-galla" class="space-y-3">
           <div>
@@ -378,8 +395,8 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
         </form>
       `);
 
-      document.getElementById("btn-modal-cancel").addEventListener("click", closeModal);
-      document.getElementById("form-close-galla").addEventListener("submit", async (e) => {
+      document.getElementById("btn-modal-cancel")?.addEventListener("click", closeModal);
+      document.getElementById("form-close-galla")?.addEventListener("submit", async (e) => {
         e.preventDefault();
         const physical = Number(document.getElementById("physical-cash").value);
         const notes = document.getElementById("close-remarks").value;
@@ -395,18 +412,15 @@ function attachDashboardEvents(containerEl, galla, onNavigate) {
   }
 
   // Navigation shortcuts
-  const btnNewTrip = containerEl.querySelector("#btn-dashboard-new-trip");
-  if (btnNewTrip && typeof onNavigate === "function") {
-    btnNewTrip.addEventListener("click", () => onNavigate("tab-trips"));
-  }
+  containerEl.querySelector("#btn-dashboard-new-trip")?.addEventListener("click", () => {
+    if (typeof onNavigate === "function") onNavigate("tab-trips");
+  });
 
-  const kpiTrips = containerEl.querySelector("#kpi-active-trips");
-  if (kpiTrips && typeof onNavigate === "function") {
-    kpiTrips.addEventListener("click", () => onNavigate("tab-trips"));
-  }
+  containerEl.querySelector("#kpi-active-trips")?.addEventListener("click", () => {
+    if (typeof onNavigate === "function") onNavigate("tab-trips");
+  });
 
-  const kpiRto = containerEl.querySelector("#kpi-rto-alerts");
-  if (kpiRto && typeof onNavigate === "function") {
-    kpiRto.addEventListener("click", () => onNavigate("tab-fleet"));
-  }
+  containerEl.querySelector("#kpi-rto-alerts")?.addEventListener("click", () => {
+    if (typeof onNavigate === "function") onNavigate("tab-fleet");
+  });
 }
