@@ -1,16 +1,36 @@
 {
+  "id": "/aadesh-tours-udaipur/",
   "name": "Aadesh Tours Udaipur",
   "short_name": "Aadesh Vault",
+  "description": "Owner-only Fleet Management & Accounting Vault for Aadesh Tours Udaipur",
   "start_url": "./index.html",
+  "scope": "./",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#090d16",
   "theme_color": "#0f172a",
-  "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f59e0b'><path d='M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.77l.11.34V17z'/></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' fill='%230f172a'/><path d='M400 128C396 116 384 108 370 108H142C128 108 116 116 112 128L64 256v170c0 12 10 22 22 22h22c12 0 22-10 22-22v-22h256v22c0 12 10 22 22 22h22c12 0 22-10 22-22V256l-48-128zM146 150h220l22 64H124l22-64zm256 214H110v-99h292v99z' fill='%23f59e0b'/></svg>",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1080 1920'><rect width='1080' height='1920' fill='%23090d16'/><text x='540' y='960' fill='%23f59e0b' font-size='60' text-anchor='middle' font-family='sans-serif'>Aadesh Tours Udaipur</text></svg>",
+      "sizes": "1080x1920",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Mobile Dashboard"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1920 1080'><rect width='1920' height='1080' fill='%23090d16'/><text x='960' y='540' fill='%23f59e0b' font-size='60' text-anchor='middle' font-family='sans-serif'>Aadesh Tours Udaipur</text></svg>",
+      "sizes": "1920x1080",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "Desktop View"
     }
   ]
 }
