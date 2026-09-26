@@ -1,0 +1,462 @@
+// js/views/trips-view.js
+// Aadesh Tours Udaipur - Trips & Duty Slip Manager (Phase 28)
+
+import { 
+  getAllTrips, 
+  createTrip, 
+  completeTrip, 
+  generateDutySlipNumber 
+} from "../services/trip-service.js";
+import { getAllVehicles } from "../services/fleet-service.js";
+import { getAllDrivers } from "../services/driver-service.js";
+import { getAllCustomers } from "../services/customer-service.js";
+import { createInvoiceFromTrip } from "../services/invoice-service.js";
+import { generateWhatsAppTripSummary } from "../exporters/data-exporter.js";
+
+/**
+ * 1. Render Complete Trips & Duty Slips Management View
+ * @param {HTMLElement} containerEl - Target element (#tab-trips)
+ * @param {Function} onNavigate - Tab switch callback
+ */
+export async function renderTripsView(containerEl, onNavigate) {
+  // Fetch required data in parallel
+  const [trips, vehicles, drivers, customers] = await Promise.all([
+    getAllTrips(),
+    getAllVehicles(),
+    getAllDrivers(),
+    getAllCustomers()
+  ]);
+
+  let activeFilter = "ALL"; // 'ALL', 'ACTIVE', 'COMPLETED'
+
+  const getFilteredTrips = () => {
+    if (activeFilter === "ACTIVE") return trips.filter(t => t.status === "ACTIVE");
+    if (activeFilter === "COMPLETED") return trips.filter(t => t.status === "COMPLETED" || t.status === "BILLED");
+    return trips;
+  };
+
+  const renderContent = () => {
+    const filtered = getFilteredTrips();
+    const activeCount = trips.filter(t => t.status === "ACTIVE").length;
+
+    containerEl.innerHTML = `
+      <!-- Top Action Ribbon -->
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-black text-white tracking-wide">ड्यूटी स्लिप व ट्रिप्स</h2>
+          <p class="text-xs text-slate-400">कुल ट्रिप्स: <span class="font-mono text-amber-400 font-bold">${trips.length}</span> (चालू: ${activeCount})</p>
+        </div>
+        <button id="btn-create-trip" class="btn btn-primary text-xs sm:text-sm py-2 px-3">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+          + नई ड्यूटी स्लिप (New Trip)
+        </button>
+      </div>
+
+      <!-- Filter Toggle Tabs -->
+      <div class="flex gap-2 border-b border-slate-800 pb-2">
+        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'ALL' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="ALL">
+          सभी ट्रिप्स (${trips.length})
+        </button>
+        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'ACTIVE' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="ACTIVE">
+          चालू / On-Duty (${activeCount})
+        </button>
+        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'COMPLETED' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="COMPLETED">
+          पूर्ण / Billed (${trips.length - activeCount})
+        </button>
+      </div>
+
+      <!-- Trips List Cards -->
+      <div class="space-y-3">
+        ${filtered.length === 0 ? `
+          <div class="vault-card text-center p-8 text-slate-500 text-xs">
+            इस श्रेणी में कोई ट्रिप रिकॉर्ड नहीं मिला।
+          </div>
+        ` : filtered.map(t => {
+          const isActive = t.status === "ACTIVE";
+          const isBilled = t.status === "BILLED";
+          return `
+            <div class="vault-card space-y-3 border-l-4 ${isActive ? 'border-l-emerald-400' : 'border-l-slate-600'}">
+              <div class="flex flex-wrap items-center justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-bold text-amber-400 text-sm">#${t.dutySlipNumber}</span>
+                  <span class="badge-status ${isActive ? 'badge-active' : (isBilled ? 'badge-info' : 'badge-warning')}">
+                    ${t.status}
+                  </span>
+                  <span class="badge-status badge-info text-[10px]">${t.tripType}</span>
+                </div>
+                <div class="text-xs text-slate-400 font-mono">
+                  ${t.startDate}${t.endDate && t.endDate !== t.startDate ? 'से ' + t.endDate : ''}
+                </div>
+              </div>
+
+              <!-- Main Details Grid -->
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-slate-950/40 p-2.5 rounded-lg">
+                <div>
+                  <span class="text-slate-400 block text-[11px]">ग्राहक / पार्टी:</span>
+                  <span class="font-bold text-slate-100 text-sm">${t.customerName}</span>
+                  <span class="text-slate-400 block font-mono">${t.customerPhone || 'फोन नहीं'}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-[11px]">गाड़ी व चालक:</span>
+                  <span class="font-mono font-bold text-slate-100">${t.vehicleId}</span>
+                  <span class="text-slate-300 block">${t.driverName || 'ड्राइवर तय नहीं'}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400 block text-[11px]">रूट व किलोमीटर:</span>
+                  <span class="text-slate-200">${t.pickupLocation} ➔${t.dropLocation || 'लोकल'}</span>
+                  <span class="text-amber-400 block font-mono font-bold">
+                    ${isActive ? `शुरू मीटर: ${t.startKm} KM` : `कुल रन: ${t.totalKmRun || 0} KM`}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Financial Micro-bar -->
+              <div class="flex items-center justify-between text-xs px-1">
+                <div>
+                  <span class="text-slate-400">एडवांस:</span>
+                  <span class="font-mono font-bold text-emerald-400">₹${t.advancePaid || 0}</span>
+                </div>
+                <div>
+                  <span class="text-slate-400">दर/KM:</span>
+                  <span class="font-mono text-slate-200">₹${t.ratePerKm || 0}</span>
+                </div>
+                ${!isActive ? `
+                  <div>
+                    <span class="text-slate-400">अंतिम बिल:</span>
+                    <span class="font-mono font-bold text-amber-400">₹${t.finalPayableAmount || 0}</span>
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Action Buttons Row -->
+              <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
+                <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-share-wa" data-slip="${t.dutySlipNumber}">
+                  WhatsApp शेयर
+                </button>
+
+                ${isActive ? `
+                  <button class="btn btn-success text-xs py-1.5 px-3 btn-close-trip" data-slip="${t.dutySlipNumber}">
+                    ट्रिप बंद करें (Close KM)
+                  </button>
+                ` : `
+                  ${!isBilled ? `
+                    <button class="btn btn-primary text-xs py-1.5 px-3 btn-generate-bill" data-slip="${t.dutySlipNumber}">
+                      इनवॉइस बनाएं (Bill)
+                    </button>
+                  ` : `
+                    <span class="text-[11px] text-emerald-400 font-bold px-2 py-1 bg-emerald-500/10 rounded">
+                      बिल # ${t.invoiceNumber || 'BILLED'}
+                    </span>
+                  `}
+                `}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+
+    bindTripEvents();
+  };
+
+  const bindTripEvents = () => {
+    const modalContainer = document.getElementById("modal-container");
+    const modalContent = document.getElementById("modal-content");
+
+    const openModal = (html) => {
+      modalContent.innerHTML = html;
+      modalContainer.classList.remove("hidden");
+    };
+
+    const closeModal = () => {
+      modalContainer.classList.add("hidden");
+      modalContent.innerHTML = "";
+    };
+
+    // Filter Buttons
+    containerEl.querySelectorAll(".trip-filter-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        activeFilter = btn.dataset.filter;
+        renderContent();
+      });
+    });
+
+    // 1. OPEN NEW TRIP MODAL
+    const btnNew = containerEl.querySelector("#btn-create-trip");
+    if (btnNew) {
+      btnNew.addEventListener("click", () => {
+        const defaultSlip = generateDutySlipNumber();
+        const today = new Date().toISOString().slice(0, 10);
+
+        openModal(`
+          <h3 class="text-base font-bold text-white mb-3">नई ड्यूटी स्लिप खोलें (New Trip)</h3>
+          <form id="form-new-trip" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label">ड्यूटी स्लिप #</label>
+                <input type="text" id="trip-slip-no" class="form-input font-mono font-bold text-amber-400" value="${defaultSlip}" required>
+              </div>
+              <div>
+                <label class="form-label">तारीख (Start Date)</label>
+                <input type="date" id="trip-start-date" class="form-input" value="${today}" required>
+              </div>
+            </div>
+
+            <!-- Customer Selection / Quick Entry -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label">ग्राहक / पार्टी नाम *</label>
+                <input type="text" id="trip-cust-name" list="customer-list" class="form-input" placeholder="नाम लिखें या चुनें" required>
+                <datalist id="customer-list">
+                  ${customers.map(c => `<option value="${c.name}">${c.businessName ? `(${c.businessName})` : ''}</option>`).join('')}
+                </datalist>
+              </div>
+              <div>
+                <label class="form-label">मोबाइल नंबर</label>
+                <input type="tel" id="trip-cust-phone" class="form-input" placeholder="9876543210">
+              </div>
+            </div>
+
+            <!-- Vehicle & Driver Assignment -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label">गाड़ी चुनें (Vehicle) *</label>
+                <select id="trip-vehicle" class="form-select" required>
+                  <option value="">-- गाड़ी चुनें --</option>
+                  ${vehicles.map(v => `<option value="${v.regNumber}" data-odo="${v.currentOdometer || 0}">${v.regNumber} (${v.makeModel})</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="form-label">ड्राइवर चुनें (Driver)</label>
+                <select id="trip-driver" class="form-select">
+                  <option value="">-- ड्राइवर चुनें --</option>
+                  ${drivers.map(d => `<option value="${d.name}">${d.name} (${d.phone})</option>`).join('')}
+                </select>
+              </div>
+            </div>
+
+            <!-- Trip Type & Odometer -->
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="form-label">ट्रिप प्रकार</label>
+                <select id="trip-type" class="form-select">
+                  <option value="OUTSTATION">Outstation</option>
+                  <option value="LOCAL">Local Tour</option>
+                  <option value="AIRPORT_TRANSFER">Airport Transfer</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label">शुरू मीटर (KM) *</label>
+                <input type="number" id="trip-start-km" class="form-input font-mono font-bold" placeholder="0" required>
+              </div>
+              <div>
+                <label class="form-label">दर / KM (₹)</label>
+                <input type="number" id="trip-rate-km" class="form-input font-mono" value="12" required>
+              </div>
+            </div>
+
+            <!-- Route Details -->
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label">पिकअप स्थान</label>
+                <input type="text" id="trip-pickup" class="form-input" value="Udaipur" required>
+              </div>
+              <div>
+                <label class="form-label">ड्रॉप स्थान / रूट</label>
+                <input type="text" id="trip-drop" class="form-input" placeholder="उदा. Kumbhalgarh - Ranakpur">
+              </div>
+            </div>
+
+            <!-- Commercial Slabs -->
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="form-label">मिनिमम KM/दिन</label>
+                <input type="number" id="trip-min-km" class="form-input font-mono" value="250">
+              </div>
+              <div>
+                <label class="form-label">ड्राइवर भत्ता/दिन (₹)</label>
+                <input type="number" id="trip-bhatta" class="form-input font-mono" value="300">
+              </div>
+              <div>
+                <label class="form-label">एडवांस प्राप्त (₹)</label>
+                <input type="number" id="trip-advance" class="form-input font-mono font-bold text-emerald-400" value="0">
+              </div>
+            </div>
+
+            <div class="pt-2 flex gap-2">
+              <button type="submit" class="btn btn-primary flex-1 py-2.5">ड्यूटी स्लिप शुरू करें</button>
+              <button type="button" id="btn-cancel-modal" class="btn btn-secondary py-2.5">रद्द करें</button>
+            </div>
+          </form>
+        `);
+
+        // Auto-populate odometer reading on vehicle selection
+        const vehSelect = document.getElementById("trip-vehicle");
+        const startKmInput = document.getElementById("trip-start-km");
+        vehSelect.addEventListener("change", () => {
+          const opt = vehSelect.options[vehSelect.selectedIndex];
+          const odo = opt.getAttribute("data-odo");
+          if (odo) startKmInput.value = odo;
+        });
+
+        document.getElementById("btn-cancel-modal").addEventListener("click", closeModal);
+        document.getElementById("form-new-trip").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const payload = {
+            dutySlipNumber: document.getElementById("trip-slip-no").value,
+            startDate: document.getElementById("trip-start-date").value,
+            customerName: document.getElementById("trip-cust-name").value,
+            customerPhone: document.getElementById("trip-cust-phone").value,
+            vehicleId: document.getElementById("trip-vehicle").value,
+            driverName: document.getElementById("trip-driver").value,
+            tripType: document.getElementById("trip-type").value,
+            startKm: Number(document.getElementById("trip-start-km").value),
+            ratePerKm: Number(document.getElementById("trip-rate-km").value),
+            pickupLocation: document.getElementById("trip-pickup").value,
+            dropLocation: document.getElementById("trip-drop").value,
+            minKmPerDay: Number(document.getElementById("trip-min-km").value),
+            driverAllowancePerDay: Number(document.getElementById("trip-bhatta").value),
+            advancePaid: Number(document.getElementById("trip-advance").value)
+          };
+
+          const res = await createTrip(payload, payload.advancePaid > 0);
+          if (res.success) {
+            closeModal();
+            renderTripsView(containerEl, onNavigate);
+          } else {
+            alert(res.message);
+          }
+        });
+      });
+    }
+
+    // 2. CLOSE TRIP / COMPLETE DUTY SLIP MODAL
+    containerEl.querySelectorAll(".btn-close-trip").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const slip = btn.dataset.slip;
+        const trip = trips.find(t => t.dutySlipNumber === slip);
+        if (!trip) return;
+
+        const today = new Date().toISOString().slice(0, 10);
+
+        openModal(`
+          <h3 class="text-base font-bold text-white mb-2">ट्रिप पूरी करें / मीटर बंद करें</h3>
+          <p class="text-xs text-slate-400 mb-3">स्लिप: <span class="font-mono text-amber-400 font-bold">#${slip}</span> | गाड़ी: ${trip.vehicleId}</p>
+
+          <form id="form-close-trip" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label">समाप्ति तारीख (End Date)</label>
+                <input type="date" id="close-end-date" class="form-input" value="${today}" required>
+              </div>
+              <div>
+                <label class="form-label">प्रारंभिक मीटर (Start KM)</label>
+                <input type="text" class="form-input bg-slate-800 font-mono text-slate-400" value="${trip.startKm}" readonly>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="form-label">अंतिम मीटर (End KM) *</label>
+                <input type="number" id="close-end-km" class="form-input font-mono font-bold text-emerald-400 text-sm" placeholder="मीटर रीडिंग डालें" required autofocus>
+              </div>
+              <div>
+                <label class="form-label">कुल रनिंग (Total KM)</label>
+                <input type="text" id="close-total-km" class="form-input font-mono font-bold text-amber-400" value="0 KM" readonly>
+              </div>
+            </div>
+
+            <!-- On-Duty Expenses -->
+            <div class="grid grid-cols-3 gap-2">
+              <div>
+                <label class="form-label">टोल चार्ज (₹)</label>
+                <input type="number" id="close-toll" class="form-input font-mono" value="0">
+              </div>
+              <div>
+                <label class="form-label">पार्किंग चार्ज (₹)</label>
+                <input type="number" id="close-parking" class="form-input font-mono" value="0">
+              </div>
+              <div>
+                <label class="form-label">नाइट चार्ज (₹)</label>
+                <input type="number" id="close-night" class="form-input font-mono" value="0">
+              </div>
+            </div>
+
+            <div class="pt-2 flex gap-2">
+              <button type="submit" class="btn btn-success flex-1 py-2.5">मीटर लॉक व ट्रिप पूर्ण करें</button>
+              <button type="button" id="btn-cancel-close" class="btn btn-secondary py-2.5">रद्द करें</button>
+            </div>
+          </form>
+        `);
+
+        const endKmInput = document.getElementById("close-end-km");
+        const totalKmInput = document.getElementById("close-total-km");
+
+        endKmInput.addEventListener("input", () => {
+          const endVal = Number(endKmInput.value) || 0;
+          const diff = endVal - Number(trip.startKm);
+          totalKmInput.value = `${diff > 0 ? diff : 0} KM`;
+        });
+
+        document.getElementById("btn-cancel-close").addEventListener("click", closeModal);
+        document.getElementById("form-close-trip").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const closingData = {
+            endDate: document.getElementById("close-end-date").value,
+            endKm: Number(document.getElementById("close-end-km").value),
+            tollCharges: Number(document.getElementById("close-toll").value),
+            parkingCharges: Number(document.getElementById("close-parking").value),
+            nightCharges: Number(document.getElementById("close-night").value)
+          };
+
+          const res = await completeTrip(slip, closingData);
+          if (res.success) {
+            closeModal();
+            renderTripsView(containerEl, onNavigate);
+          } else {
+            alert(res.message);
+          }
+        });
+      });
+    });
+
+    // 3. GENERATE INVOICE MODAL
+    containerEl.querySelectorAll(".btn-generate-bill").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const slip = btn.dataset.slip;
+        const confirmGst = confirm(`स्लिप #${slip} के लिए GST इनवॉइस बनाना चाहते हैं?\n(OK = GST इनवॉइस, Cancel = Regular Bill of Supply)`);
+        
+        const res = await createInvoiceFromTrip(slip, {
+          isGstInvoice: confirmGst,
+          gstRatePercent: confirmGst ? 5 : 0
+        });
+
+        if (res.success) {
+          alert(`बिल तैयार हो गया! इनवॉइस नंबर: ${res.data.invoiceNumber}`);
+          renderTripsView(containerEl, onNavigate);
+        } else {
+          alert(`त्रुटि: ${res.message}`);
+        }
+      });
+    });
+
+    // 4. WHATSAPP SHARE ACTION
+    containerEl.querySelectorAll(".btn-share-wa").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const slip = btn.dataset.slip;
+        const trip = trips.find(t => t.dutySlipNumber === slip);
+        if (!trip) return;
+
+        const summary = generateWhatsAppTripSummary(trip);
+        const encoded = encodeURIComponent(summary);
+        const waUrl = trip.customerPhone 
+          ? `https://wa.me/91${trip.customerPhone.slice(-10)}?text=${encoded}`
+          : `https://wa.me/?text=${encoded}`;
+        
+        window.open(waUrl, "_blank");
+      });
+    });
+  };
+
+  renderContent();
+}
