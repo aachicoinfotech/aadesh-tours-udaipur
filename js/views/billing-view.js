@@ -1,5 +1,5 @@
 // js/views/billing-view.js
-// Aadesh Tours Udaipur - Billing & Customer Ledger Controller (Phase 29)
+// Aadesh Tours Udaipur - Billing & Customer Ledger Controller (Phase 29 Fixed)
 
 import { getAllInvoices, recordInvoicePayment } from "../services/invoice-service.js";
 import { getAllCustomers, updateCustomerBalance } from "../services/customer-service.js";
@@ -41,6 +41,9 @@ export async function renderBillingView(containerEl, onNavigate) {
       return true;
     });
 
+    const unpaidCount = invoices.filter(i => Number(i.balanceDue) > 0).length;
+    const paidCount = invoices.filter(i => Number(i.balanceDue) <= 0).length;
+
     containerEl.innerHTML = `
       <!-- Top Metrics Ribbon -->
       <div class="flex flex-wrap items-center justify-between gap-3">
@@ -74,10 +77,10 @@ export async function renderBillingView(containerEl, onNavigate) {
               सभी बिल (${invoices.length})
             </button>
             <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'UNPAID' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="UNPAID">
-              बकाया / Due (${invoices.filter(i => Number(i.balanceDue) > 0).length})
+              बकाया / Due (${unpaidCount})
             </button>
             <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'PAID' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="PAID">
-              पूर्ण चुकता (${invoices.filter(i => Number(i.balanceDue) <= 0).length})
+              पूर्ण चुकता (${paidCount})
             </button>
             <button class="bill-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'PARTIES' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="PARTIES">
               होटल लेजर (${customers.length})
@@ -114,17 +117,20 @@ export async function renderBillingView(containerEl, onNavigate) {
         ${list.map(inv => {
           const isUnpaid = Number(inv.balanceDue) > 0;
           const billing = inv.billingBreakdown || {};
+          const statusBadge = inv.paymentStatus || (isUnpaid ? 'DUE' : 'PAID');
+          const borderClass = isUnpaid ? 'border-l-rose-500' : 'border-l-emerald-500';
+          const typeBadge = inv.isGstInvoice ? 'GST INVOICE' : 'BILL OF SUPPLY';
 
           return `
-            <div class="vault-card space-y-3 border-l-4 ${isUnpaid ? 'border-l-rose-500' : 'border-l-emerald-500'}">
+            <div class="vault-card space-y-3 border-l-4 ${borderClass}">
               <div class="flex flex-wrap items-center justify-between gap-2">
                 <div class="flex items-center gap-2">
                   <span class="font-mono font-bold text-white text-sm">${inv.invoiceNumber}</span>
                   <span class="badge-status ${inv.isGstInvoice ? 'badge-info' : 'badge-warning'}">
-                    ${inv.isGstInvoice ? 'GST INVOICE' : 'BILL OF SUPPLY'}
+                    ${typeBadge}
                   </span>
                   <span class="badge-status ${isUnpaid ? 'badge-danger' : 'badge-active'}">
-                    ${inv.paymentStatus || (isUnpaid ? 'DUE' : 'PAID')}
+                    ${statusBadge}
                   </span>
                 </div>
                 <div class="text-xs text-slate-400 font-mono">
@@ -206,11 +212,15 @@ export async function renderBillingView(containerEl, onNavigate) {
       <div class="space-y-3">
         ${partyList.map(c => {
           const bal = Number(c.outstandingBalance) || 0;
+          const balText = bal > 0 ? ('बकाया: ₹' + bal.toLocaleString('en-IN')) : ('जमा: ₹' + Math.abs(bal).toLocaleString('en-IN'));
+          const balColor = bal > 0 ? 'text-rose-400' : 'text-emerald-400';
+          const businessTag = c.businessName ? '(' + c.businessName + ')' : '';
+
           return `
             <div class="vault-card flex items-center justify-between p-3">
               <div>
                 <div class="flex items-center gap-2">
-                  <span class="font-bold text-white text-sm">${c.name}</span>${c.businessName ? `<span class="text-xs text-amber-400">(${c.businessName})</span>` : ''}
+                  <span class="font-bold text-white text-sm">${c.name}</span>${businessTag ? `<span class="text-xs text-amber-400">${businessTag}</span>` : ''}
                   <span class="badge-status badge-info text-[10px]">${c.category || 'PARTY'}</span>
                 </div>
                 <div class="text-xs text-slate-400 mt-0.5">
@@ -221,8 +231,8 @@ export async function renderBillingView(containerEl, onNavigate) {
 
               <div class="text-right">
                 <span class="text-[11px] text-slate-400 block">वर्तमान बैलेंस:</span>
-                <span class="font-mono font-black text-sm ${bal > 0 ? 'text-rose-400' : 'text-emerald-400'}">
-                  ${bal > 0 ? `बकाया: ₹${bal.toLocaleString('en-IN')}` : `जमा: ₹${Math.abs(bal).toLocaleString('en-IN')}`}
+                <span class="font-mono font-black text-sm ${balColor}">
+                  ${balText}
                 </span>
               </div>
             </div>
@@ -356,10 +366,8 @@ export async function renderBillingView(containerEl, onNavigate) {
 
             if (payAmt <= 0) return;
 
-            // 1. Record against invoice
             const res = await recordInvoicePayment(invNum, payAmt, payMode);
             
-            // 2. If Cash, automatically credit to daily Galla
             if (payMode === "CASH") {
               await addGallaTransaction({
                 type: "IN",
