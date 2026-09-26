@@ -13,13 +13,13 @@
   "prefer_related_applications": false,
   "icons": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Circle-icons-car.svg/192px-Circle-icons-car.svg.png",
+      "src": "https://dummyimage.com/192x192/0f172a/f59e0b.png&text=AADESH",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Circle-icons-car.svg/512px-Circle-icons-car.svg.png",
+      "src": "https://dummyimage.com/512x512/0f172a/f59e0b.png&text=AADESH",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
@@ -27,11 +27,11 @@
   ],
   "screenshots": [
     {
-      "src": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Circle-icons-car.svg/512px-Circle-icons-car.svg.png",
-      "sizes": "512x512",
+      "src": "https://dummyimage.com/1080x1920/090d16/f59e0b.png&text=Aadesh+Tours+Mobile",
+      "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Aadesh Tours Dashboard"
+      "label": "Aadesh Tours Mobile View"
     }
   ]
 }
