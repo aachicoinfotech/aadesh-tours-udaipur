@@ -1,0 +1,274 @@
+/* css/style.css */
+/* Aadesh Tours Udaipur - Master Stylesheet & Design Engine (Phase 26) */
+
+/* 1. CSS VARIABLES & COLOR PALETTE */
+:root {
+  --bg-vault-dark: #090d16;
+  --bg-card: #0f172a;
+  --bg-card-hover: #1e293b;
+  --border-card: #1e293b;
+  --border-focus: #f59e0b;
+  
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dark: #0f172a;
+  
+  --amber-gold: #f59e0b;
+  --amber-glow: rgba(245, 158, 11, 0.15);
+  --emerald-green: #10b981;
+  --rose-red: #ef4444;
+  --sky-blue: #0ea5e9;
+  
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+}
+
+/* 2. BASE RESETS & TYPOGRAPHY */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  background-color: var(--bg-vault-dark);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* 3. UTILITY CLASSES (Matching index.html) */
+.fixed { position: fixed; }
+.sticky { position: sticky; }
+.relative { position: relative; }
+.inset-0 { top: 0; right: 0; bottom: 0; left: 0; }
+.top-0 { top: 0; }
+.bottom-0 { bottom: 0; }
+.z-40 { z-index: 40; }
+.z-50 { z-index: 50; }
+
+.flex { display: flex; }
+.inline-flex { display: inline-flex; }
+.grid { display: grid; }
+.hidden { display: none !important; }
+.block { display: block; }
+
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.justify-center { justify-content: center; }
+.justify-around { justify-content: space-around; }
+
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.gap-2 { gap: 0.5rem; }
+.gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
+
+.w-full { width: 100%; }
+.max-w-sm { max-width: 24rem; }
+.max-w-lg { max-width: 32rem; }
+.max-w-7xl { max-width: 80rem; }
+.mx-auto { margin-left: auto; margin-right: auto; }
+.min-h-screen { min-height: 100vh; }
+.flex-1 { flex: 1 1 0%; }
+.flex-col { flex-direction: column; }
+
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 0.75rem; }
+.p-4 { padding: 1rem; }
+.p-5 { padding: 1.25rem; }
+.p-6 { padding: 1.5rem; }
+.px-4 { padding-left: 1rem; padding-right: 1rem; }
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.pb-24 { padding-bottom: 6rem; }
+
+/* 4. PIN KEYPAD & AUTH OVERLAY */
+#auth-overlay {
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+.key-btn {
+  background: var(--bg-card-hover);
+  border: 1px solid var(--border-card);
+  color: var(--text-main);
+  font-size: 1.35rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  padding: 1rem 0;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.key-btn:active {
+  background: var(--amber-gold);
+  color: var(--text-dark);
+  transform: scale(0.96);
+}
+
+/* 5. BOTTOM NAVIGATION BAR */
+.nav-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.nav-tab-btn.active {
+  color: var(--amber-gold);
+  transform: translateY(-2px);
+}
+
+.nav-tab-btn.active svg {
+  stroke: var(--amber-gold);
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.4));
+}
+
+/* 6. VAULT CARDS & METRIC METERS */
+.vault-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.stat-metric {
+  background: linear-gradient(145deg, #0f172a, #162032);
+  border: 1px solid var(--border-card);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-value {
+  font-size: 1.4rem;
+  font-weight: 800;
+  font-family: monospace;
+  margin-top: 0.25rem;
+}
+
+/* 7. FORM CONTROLS & INPUTS */
+.form-input, .form-select, .form-textarea {
+  width: 100%;
+  background: #090d16;
+  border: 1px solid #334155;
+  border-radius: var(--radius-sm);
+  padding: 0.65rem 0.85rem;
+  color: #fff;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus, .form-select:focus, .form-textarea:focus {
+  border-color: var(--amber-gold);
+  box-shadow: 0 0 0 2px var(--amber-glow);
+}
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.35rem;
+  text-transform: uppercase;
+}
+
+/* 8. BUTTONS & ACTIONS */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border-radius: var(--radius-sm);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary {
+  background: var(--amber-gold);
+  color: var(--text-dark);
+}
+.btn-primary:active { opacity: 0.85; transform: scale(0.98); }
+
+.btn-success { background: var(--emerald-green); color: #fff; }
+.btn-danger { background: var(--rose-red); color: #fff; }
+.btn-secondary { background: #334155; color: #fff; }
+
+/* 9. TALLY-STYLE ACCOUNTING TABLES */
+.tally-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.tally-table th {
+  background: #1e293b;
+  color: var(--text-muted);
+  text-align: left;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.75rem;
+  border-bottom: 1px solid #334155;
+  text-transform: uppercase;
+}
+
+.tally-table td {
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid #1e293b;
+}
+
+.tally-debit { color: #f87171; font-weight: 700; font-family: monospace; }
+.tally-credit { color: #34d399; font-weight: 700; font-family: monospace; }
+
+/* 10. STATUS BADGES */
+.badge-status {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.badge-active { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.badge-warning { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.badge-danger { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+.badge-info { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+
+/* 11. RESPONSIVE DESKTOP ENHANCEMENTS */
+@media (min-width: 768px) {
+  .nav-tab-btn {
+    font-size: 0.8rem;
+    padding: 0.5rem 1.25rem;
+    flex-direction: row;
+    gap: 0.5rem;
+  }
+  .stat-metric { padding: 1.25rem; }
+  .stat-value { font-size: 1.8rem; }
+}
