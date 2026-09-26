@@ -1,17 +1,12 @@
 // js/views/trips-view.js
-// Aadesh Tours Udaipur - Trips & Duty Slip Manager (Phase 28)
+// Aadesh Tours Udaipur - Trips & Duty Slip Manager (Phase 28 - Resilient Fix)
 
-import { 
-  getAllTrips, 
-  createTrip, 
-  completeTrip, 
-  generateDutySlipNumber 
-} from "../services/trip-service.js";
-import { getAllVehicles } from "../services/fleet-service.js";
-import { getAllDrivers } from "../services/driver-service.js";
-import { getAllCustomers } from "../services/customer-service.js";
-import { createInvoiceFromTrip } from "../services/invoice-service.js";
-import { generateWhatsAppTripSummary } from "../exporters/data-exporter.js";
+import * as tripService from "../services/trip-service.js";
+import * as fleetService from "../services/fleet-service.js";
+import * as driverService from "../services/driver-service.js";
+import * as customerService from "../services/customer-service.js";
+import * as invoiceService from "../services/invoice-service.js";
+import * as dataExporter from "../exporters/data-exporter.js";
 
 /**
  * 1. Render Complete Trips & Duty Slips Management View
@@ -19,13 +14,18 @@ import { generateWhatsAppTripSummary } from "../exporters/data-exporter.js";
  * @param {Function} onNavigate - Tab switch callback
  */
 export async function renderTripsView(containerEl, onNavigate) {
-  // Fetch required data in parallel
-  const [trips, vehicles, drivers, customers] = await Promise.all([
-    getAllTrips(),
-    getAllVehicles(),
-    getAllDrivers(),
-    getAllCustomers()
+  // Fetch required data in parallel safely
+  const [tripsResult, vehiclesResult, driversResult, customersResult] = await Promise.all([
+    (tripService.getAllTrips ? tripService.getAllTrips() : Promise.resolve([])).catch(() => []),
+    (fleetService.getAllVehicles ? fleetService.getAllVehicles() : Promise.resolve([])).catch(() => []),
+    (driverService.getAllDrivers ? driverService.getAllDrivers() : Promise.resolve([])).catch(() => []),
+    (customerService.getAllCustomers ? customerService.getAllCustomers() : Promise.resolve([])).catch(() => [])
   ]);
+
+  const trips = Array.isArray(tripsResult) ? tripsResult : [];
+  const vehicles = Array.isArray(vehiclesResult) ? vehiclesResult : [];
+  const drivers = Array.isArray(driversResult) ? driversResult : [];
+  const customers = Array.isArray(customersResult) ? customersResult : [];
 
   let activeFilter = "ALL"; // 'ALL', 'ACTIVE', 'COMPLETED'
 
@@ -39,121 +39,116 @@ export async function renderTripsView(containerEl, onNavigate) {
     const filtered = getFilteredTrips();
     const activeCount = trips.filter(t => t.status === "ACTIVE").length;
 
+    const allBtnClass = activeFilter === "ALL" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+    const activeBtnClass = activeFilter === "ACTIVE" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+    const completedBtnClass = activeFilter === "COMPLETED" ? "bg-amber-500 text-slate-950 font-bold" : "bg-slate-800 text-slate-300";
+
+    let tripsListHtml = "";
+    if (filtered.length === 0) {
+      tripsListHtml = '<div class="vault-card text-center p-8 text-slate-500 text-xs">इस श्रेणी में कोई ट्रिप रिकॉर्ड नहीं मिला।</div>';
+    } else {
+      const cards = filtered.map(t => {
+        const isActive = t.status === "ACTIVE";
+        const isBilled = t.status === "BILLED";
+        const borderClass = isActive ? "border-l-emerald-400" : "border-l-slate-600";
+        const badgeClass = isActive ? "badge-active" : (isBilled ? "badge-info" : "badge-warning");
+        const dateStr = (t.startDate || "") + (t.endDate && t.endDate !== t.startDate ? " से " + t.endDate : "");
+        const custPhone = t.customerPhone || "फोन नहीं";
+        const driverName = t.driverName || "ड्राइवर तय नहीं";
+        const dropLoc = t.dropLocation || "लोकल";
+        const kmInfo = isActive ? ("शुरू मीटर: " + (t.startKm || 0) + " KM") : ("कुल रन: " + (t.totalKmRun || 0) + " KM");
+
+        let finalBillHtml = "";
+        if (!isActive) {
+          finalBillHtml = '<div><span class="text-slate-400">अंतिम बिल:</span> <span class="font-mono font-bold text-amber-400">₹' + (t.finalPayableAmount || 0) + '</span></div>';
+        }
+
+        let actionBtnHtml = "";
+        if (isActive) {
+          actionBtnHtml = '<button class="btn btn-success text-xs py-1.5 px-3 btn-close-trip" data-slip="' + t.dutySlipNumber + '">ट्रिप बंद करें (Close KM)</button>';
+        } else if (!isBilled) {
+          actionBtnHtml = '<button class="btn btn-primary text-xs py-1.5 px-3 btn-generate-bill" data-slip="' + t.dutySlipNumber + '">इनवॉइस बनाएं (Bill)</button>';
+        } else {
+          actionBtnHtml = '<span class="text-[11px] text-emerald-400 font-bold px-2 py-1 bg-emerald-500/10 rounded">बिल # ' + (t.invoiceNumber || "BILLED") + '</span>';
+        }
+
+        return `
+          <div class="vault-card space-y-3 border-l-4 ${borderClass}">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="font-mono font-bold text-amber-400 text-sm">#${t.dutySlipNumber}</span>
+                <span class="badge-status ${badgeClass}">${t.status}</span>
+                <span class="badge-status badge-info text-[10px]">${t.tripType || "OUTSTATION"}</span>
+              </div>
+              <div class="text-xs text-slate-400 font-mono">${dateStr}</div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-slate-950/40 p-2.5 rounded-lg">
+              <div>
+                <span class="text-slate-400 block text-[11px]">ग्राहक / पार्टी:</span>
+                <span class="font-bold text-slate-100 text-sm">${t.customerName}</span>
+                <span class="text-slate-400 block font-mono">${custPhone}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">गाड़ी व चालक:</span>
+                <span class="font-mono font-bold text-slate-100">${t.vehicleId}</span>
+                <span class="text-slate-300 block">${driverName}</span>
+              </div>
+              <div>
+                <span class="text-slate-400 block text-[11px]">रूट व किलोमीटर:</span>
+                <span class="text-slate-200">${t.pickupLocation} ➔ ${dropLoc}</span>
+                <span class="text-amber-400 block font-mono font-bold">${kmInfo}</span>
+              </div>
+            </div>
+
+            <div class="flex items-center justify-between text-xs px-1">
+              <div>
+                <span class="text-slate-400">एडवांस:</span>
+                <span class="font-mono font-bold text-emerald-400">₹${t.advancePaid || 0}</span>
+              </div>
+              <div>
+                <span class="text-slate-400">दर/KM:</span>
+                <span class="font-mono text-slate-200">₹${t.ratePerKm || 0}</span>
+              </div>
+              ${finalBillHtml}
+            </div>
+
+            <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
+              <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-share-wa" data-slip="${t.dutySlipNumber}">
+                WhatsApp शेयर
+              </button>
+              ${actionBtnHtml}
+            </div>
+          </div>
+        `;
+      });
+      tripsListHtml = '<div class="space-y-3">' + cards.join("") + '</div>';
+    }
+
     containerEl.innerHTML = `
-      <!-- Top Action Ribbon -->
       <div class="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 class="text-xl font-black text-white tracking-wide">ड्यूटी स्लिप व ट्रिप्स</h2>
           <p class="text-xs text-slate-400">कुल ट्रिप्स: <span class="font-mono text-amber-400 font-bold">${trips.length}</span> (चालू: ${activeCount})</p>
         </div>
         <button id="btn-create-trip" class="btn btn-primary text-xs sm:text-sm py-2 px-3">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
           + नई ड्यूटी स्लिप (New Trip)
         </button>
       </div>
 
-      <!-- Filter Toggle Tabs -->
       <div class="flex gap-2 border-b border-slate-800 pb-2">
-        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'ALL' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="ALL">
+        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${allBtnClass}" data-filter="ALL">
           सभी ट्रिप्स (${trips.length})
         </button>
-        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'ACTIVE' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="ACTIVE">
+        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeBtnClass}" data-filter="ACTIVE">
           चालू / On-Duty (${activeCount})
         </button>
-        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${activeFilter === 'COMPLETED' ? 'bg-amber-500 text-slate-950 font-bold' : 'bg-slate-800 text-slate-300'}" data-filter="COMPLETED">
+        <button class="trip-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold ${completedBtnClass}" data-filter="COMPLETED">
           पूर्ण / Billed (${trips.length - activeCount})
         </button>
       </div>
 
-      <!-- Trips List Cards -->
-      <div class="space-y-3">
-        ${filtered.length === 0 ? `
-          <div class="vault-card text-center p-8 text-slate-500 text-xs">
-            इस श्रेणी में कोई ट्रिप रिकॉर्ड नहीं मिला।
-          </div>
-        ` : filtered.map(t => {
-          const isActive = t.status === "ACTIVE";
-          const isBilled = t.status === "BILLED";
-          return `
-            <div class="vault-card space-y-3 border-l-4 ${isActive ? 'border-l-emerald-400' : 'border-l-slate-600'}">
-              <div class="flex flex-wrap items-center justify-between gap-2">
-                <div class="flex items-center gap-2">
-                  <span class="font-mono font-bold text-amber-400 text-sm">#${t.dutySlipNumber}</span>
-                  <span class="badge-status ${isActive ? 'badge-active' : (isBilled ? 'badge-info' : 'badge-warning')}">
-                    ${t.status}
-                  </span>
-                  <span class="badge-status badge-info text-[10px]">${t.tripType}</span>
-                </div>
-                <div class="text-xs text-slate-400 font-mono">
-                  ${t.startDate}${t.endDate && t.endDate !== t.startDate ? 'से ' + t.endDate : ''}
-                </div>
-              </div>
-
-              <!-- Main Details Grid -->
-              <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs bg-slate-950/40 p-2.5 rounded-lg">
-                <div>
-                  <span class="text-slate-400 block text-[11px]">ग्राहक / पार्टी:</span>
-                  <span class="font-bold text-slate-100 text-sm">${t.customerName}</span>
-                  <span class="text-slate-400 block font-mono">${t.customerPhone || 'फोन नहीं'}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400 block text-[11px]">गाड़ी व चालक:</span>
-                  <span class="font-mono font-bold text-slate-100">${t.vehicleId}</span>
-                  <span class="text-slate-300 block">${t.driverName || 'ड्राइवर तय नहीं'}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400 block text-[11px]">रूट व किलोमीटर:</span>
-                  <span class="text-slate-200">${t.pickupLocation} ➔${t.dropLocation || 'लोकल'}</span>
-                  <span class="text-amber-400 block font-mono font-bold">
-                    ${isActive ? `शुरू मीटर: ${t.startKm} KM` : `कुल रन: ${t.totalKmRun || 0} KM`}
-                  </span>
-                </div>
-              </div>
-
-              <!-- Financial Micro-bar -->
-              <div class="flex items-center justify-between text-xs px-1">
-                <div>
-                  <span class="text-slate-400">एडवांस:</span>
-                  <span class="font-mono font-bold text-emerald-400">₹${t.advancePaid || 0}</span>
-                </div>
-                <div>
-                  <span class="text-slate-400">दर/KM:</span>
-                  <span class="font-mono text-slate-200">₹${t.ratePerKm || 0}</span>
-                </div>
-                ${!isActive ? `
-                  <div>
-                    <span class="text-slate-400">अंतिम बिल:</span>
-                    <span class="font-mono font-bold text-amber-400">₹${t.finalPayableAmount || 0}</span>
-                  </div>
-                ` : ''}
-              </div>
-
-              <!-- Action Buttons Row -->
-              <div class="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-slate-800">
-                <button class="btn btn-secondary text-xs py-1.5 px-2.5 btn-share-wa" data-slip="${t.dutySlipNumber}">
-                  WhatsApp शेयर
-                </button>
-
-                ${isActive ? `
-                  <button class="btn btn-success text-xs py-1.5 px-3 btn-close-trip" data-slip="${t.dutySlipNumber}">
-                    ट्रिप बंद करें (Close KM)
-                  </button>
-                ` : `
-                  ${!isBilled ? `
-                    <button class="btn btn-primary text-xs py-1.5 px-3 btn-generate-bill" data-slip="${t.dutySlipNumber}">
-                      इनवॉइस बनाएं (Bill)
-                    </button>
-                  ` : `
-                    <span class="text-[11px] text-emerald-400 font-bold px-2 py-1 bg-emerald-500/10 rounded">
-                      बिल # ${t.invoiceNumber || 'BILLED'}
-                    </span>
-                  `}
-                `}
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
+      ${tripsListHtml}
     `;
 
     bindTripEvents();
@@ -173,7 +168,6 @@ export async function renderTripsView(containerEl, onNavigate) {
       modalContent.innerHTML = "";
     };
 
-    // Filter Buttons
     containerEl.querySelectorAll(".trip-filter-btn").forEach(btn => {
       btn.addEventListener("click", () => {
         activeFilter = btn.dataset.filter;
@@ -185,8 +179,23 @@ export async function renderTripsView(containerEl, onNavigate) {
     const btnNew = containerEl.querySelector("#btn-create-trip");
     if (btnNew) {
       btnNew.addEventListener("click", () => {
-        const defaultSlip = generateDutySlipNumber();
+        const defaultSlip = tripService.generateDutySlipNumber 
+          ? tripService.generateDutySlipNumber() 
+          : ("DS-" + Date.now().toString().slice(-6));
         const today = new Date().toISOString().slice(0, 10);
+
+        const customerOptions = customers.map(c => {
+          const bName = c.businessName ? " (" + c.businessName + ")" : "";
+          return '<option value="' + c.name + '">' + bName + '</option>';
+        }).join("");
+
+        const vehicleOptions = vehicles.map(v => {
+          return '<option value="' + v.regNumber + '" data-odo="' + (v.currentOdometer || 0) + '">' + v.regNumber + ' (' + (v.makeModel || "Cab") + ')</option>';
+        }).join("");
+
+        const driverOptions = drivers.map(d => {
+          return '<option value="' + d.name + '">' + d.name + ' (' + (d.phone || "") + ')</option>';
+        }).join("");
 
         openModal(`
           <h3 class="text-base font-bold text-white mb-3">नई ड्यूटी स्लिप खोलें (New Trip)</h3>
@@ -202,13 +211,12 @@ export async function renderTripsView(containerEl, onNavigate) {
               </div>
             </div>
 
-            <!-- Customer Selection / Quick Entry -->
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="form-label">ग्राहक / पार्टी नाम *</label>
                 <input type="text" id="trip-cust-name" list="customer-list" class="form-input" placeholder="नाम लिखें या चुनें" required>
                 <datalist id="customer-list">
-                  ${customers.map(c => `<option value="${c.name}">${c.businessName ? `(${c.businessName})` : ''}</option>`).join('')}
+                  ${customerOptions}
                 </datalist>
               </div>
               <div>
@@ -217,25 +225,23 @@ export async function renderTripsView(containerEl, onNavigate) {
               </div>
             </div>
 
-            <!-- Vehicle & Driver Assignment -->
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="form-label">गाड़ी चुनें (Vehicle) *</label>
                 <select id="trip-vehicle" class="form-select" required>
                   <option value="">-- गाड़ी चुनें --</option>
-                  ${vehicles.map(v => `<option value="${v.regNumber}" data-odo="${v.currentOdometer || 0}">${v.regNumber} (${v.makeModel})</option>`).join('')}
+                  ${vehicleOptions}
                 </select>
               </div>
               <div>
                 <label class="form-label">ड्राइवर चुनें (Driver)</label>
                 <select id="trip-driver" class="form-select">
                   <option value="">-- ड्राइवर चुनें --</option>
-                  ${drivers.map(d => `<option value="${d.name}">${d.name} (${d.phone})</option>`).join('')}
+                  ${driverOptions}
                 </select>
               </div>
             </div>
 
-            <!-- Trip Type & Odometer -->
             <div class="grid grid-cols-3 gap-2">
               <div>
                 <label class="form-label">ट्रिप प्रकार</label>
@@ -255,7 +261,6 @@ export async function renderTripsView(containerEl, onNavigate) {
               </div>
             </div>
 
-            <!-- Route Details -->
             <div class="grid grid-cols-2 gap-2">
               <div>
                 <label class="form-label">पिकअप स्थान</label>
@@ -267,7 +272,6 @@ export async function renderTripsView(containerEl, onNavigate) {
               </div>
             </div>
 
-            <!-- Commercial Slabs -->
             <div class="grid grid-cols-3 gap-2">
               <div>
                 <label class="form-label">मिनिमम KM/दिन</label>
@@ -290,7 +294,6 @@ export async function renderTripsView(containerEl, onNavigate) {
           </form>
         `);
 
-        // Auto-populate odometer reading on vehicle selection
         const vehSelect = document.getElementById("trip-vehicle");
         const startKmInput = document.getElementById("trip-start-km");
         vehSelect.addEventListener("change", () => {
@@ -299,8 +302,8 @@ export async function renderTripsView(containerEl, onNavigate) {
           if (odo) startKmInput.value = odo;
         });
 
-        document.getElementById("btn-cancel-modal").addEventListener("click", closeModal);
-        document.getElementById("form-new-trip").addEventListener("submit", async (e) => {
+        document.getElementById("btn-cancel-modal")?.addEventListener("click", closeModal);
+        document.getElementById("form-new-trip")?.addEventListener("submit", async (e) => {
           e.preventDefault();
           const payload = {
             dutySlipNumber: document.getElementById("trip-slip-no").value,
@@ -319,18 +322,21 @@ export async function renderTripsView(containerEl, onNavigate) {
             advancePaid: Number(document.getElementById("trip-advance").value)
           };
 
-          const res = await createTrip(payload, payload.advancePaid > 0);
-          if (res.success) {
-            closeModal();
-            renderTripsView(containerEl, onNavigate);
-          } else {
-            alert(res.message);
+          const createFn = tripService.createTrip || tripService.addTrip;
+          if (createFn) {
+            const res = await createFn(payload, payload.advancePaid > 0);
+            if (res && res.success) {
+              closeModal();
+              renderTripsView(containerEl, onNavigate);
+            } else {
+              alert(res ? res.message : "त्रुटि: ट्रिप सेव नहीं हो सकी");
+            }
           }
         });
       });
     }
 
-    // 2. CLOSE TRIP / COMPLETE DUTY SLIP MODAL
+    // 2. CLOSE TRIP MODAL
     containerEl.querySelectorAll(".btn-close-trip").forEach(btn => {
       btn.addEventListener("click", () => {
         const slip = btn.dataset.slip;
@@ -366,7 +372,6 @@ export async function renderTripsView(containerEl, onNavigate) {
               </div>
             </div>
 
-            <!-- On-Duty Expenses -->
             <div class="grid grid-cols-3 gap-2">
               <div>
                 <label class="form-label">टोल चार्ज (₹)</label>
@@ -395,11 +400,11 @@ export async function renderTripsView(containerEl, onNavigate) {
         endKmInput.addEventListener("input", () => {
           const endVal = Number(endKmInput.value) || 0;
           const diff = endVal - Number(trip.startKm);
-          totalKmInput.value = `${diff > 0 ? diff : 0} KM`;
+          totalKmInput.value = (diff > 0 ? diff : 0) + " KM";
         });
 
-        document.getElementById("btn-cancel-close").addEventListener("click", closeModal);
-        document.getElementById("form-close-trip").addEventListener("submit", async (e) => {
+        document.getElementById("btn-cancel-close")?.addEventListener("click", closeModal);
+        document.getElementById("form-close-trip")?.addEventListener("submit", async (e) => {
           e.preventDefault();
           const closingData = {
             endDate: document.getElementById("close-end-date").value,
@@ -409,12 +414,15 @@ export async function renderTripsView(containerEl, onNavigate) {
             nightCharges: Number(document.getElementById("close-night").value)
           };
 
-          const res = await completeTrip(slip, closingData);
-          if (res.success) {
-            closeModal();
-            renderTripsView(containerEl, onNavigate);
-          } else {
-            alert(res.message);
+          const completeFn = tripService.completeTrip || tripService.closeTrip || tripService.updateTrip;
+          if (completeFn) {
+            const res = await completeFn(slip, closingData);
+            if (res && res.success) {
+              closeModal();
+              renderTripsView(containerEl, onNavigate);
+            } else {
+              alert(res ? res.message : "त्रुटि: ट्रिप पूर्ण नहीं हो सकी");
+            }
           }
         });
       });
@@ -424,18 +432,21 @@ export async function renderTripsView(containerEl, onNavigate) {
     containerEl.querySelectorAll(".btn-generate-bill").forEach(btn => {
       btn.addEventListener("click", async () => {
         const slip = btn.dataset.slip;
-        const confirmGst = confirm(`स्लिप #${slip} के लिए GST इनवॉइस बनाना चाहते हैं?\n(OK = GST इनवॉइस, Cancel = Regular Bill of Supply)`);
+        const confirmGst = confirm("स्लिप #" + slip + " के लिए GST इनवॉइस बनाना चाहते हैं?\\n(OK = GST इनवॉइस, Cancel = Regular Bill of Supply)");
         
-        const res = await createInvoiceFromTrip(slip, {
-          isGstInvoice: confirmGst,
-          gstRatePercent: confirmGst ? 5 : 0
-        });
+        const invoiceFn = invoiceService.createInvoiceFromTrip || invoiceService.generateInvoiceFromTrip;
+        if (invoiceFn) {
+          const res = await invoiceFn(slip, {
+            isGstInvoice: confirmGst,
+            gstRatePercent: confirmGst ? 5 : 0
+          });
 
-        if (res.success) {
-          alert(`बिल तैयार हो गया! इनवॉइस नंबर: ${res.data.invoiceNumber}`);
-          renderTripsView(containerEl, onNavigate);
-        } else {
-          alert(`त्रुटि: ${res.message}`);
+          if (res && res.success) {
+            alert("बिल तैयार हो गया! इनवॉइस नंबर: " + (res.data ? res.data.invoiceNumber : ""));
+            renderTripsView(containerEl, onNavigate);
+          } else {
+            alert("त्रुटि: " + (res ? res.message : "इनवॉइस नहीं बन सका"));
+          }
         }
       });
     });
@@ -447,13 +458,15 @@ export async function renderTripsView(containerEl, onNavigate) {
         const trip = trips.find(t => t.dutySlipNumber === slip);
         if (!trip) return;
 
-        const summary = generateWhatsAppTripSummary(trip);
-        const encoded = encodeURIComponent(summary);
-        const waUrl = trip.customerPhone 
-          ? `https://wa.me/91${trip.customerPhone.slice(-10)}?text=${encoded}`
-          : `https://wa.me/?text=${encoded}`;
-        
-        window.open(waUrl, "_blank");
+        if (typeof dataExporter.generateWhatsAppTripSummary === "function") {
+          const summary = dataExporter.generateWhatsAppTripSummary(trip);
+          const encoded = encodeURIComponent(summary);
+          const waUrl = trip.customerPhone 
+            ? "https://wa.me/91" + trip.customerPhone.slice(-10) + "?text=" + encoded
+            : "https://wa.me/?text=" + encoded;
+          
+          window.open(waUrl, "_blank");
+        }
       });
     });
   };
