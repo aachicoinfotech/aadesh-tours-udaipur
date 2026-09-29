@@ -1,15 +1,9 @@
 // js/app.js
-// Aadesh Tours Udaipur - Master Bootstrap & Lifecycle Controller
+// Aadesh Tours Udaipur - Crash-Proof Master Bootstrap Controller
 
-import { renderDashboard } from "./views/dashboard-view.js";
-import { renderFleetView } from "./views/fleet-view.js";
-import { renderTripsView } from "./views/trips-view.js";
-import { renderBillingView } from "./views/billing-view.js";
-import { renderSettingsView, getMasterSettings } from "./views/settings-view.js";
-
-// 1. PIN Security & Lock Management
 let enteredPin = "";
 
+// 1. PIN Security & Keypad (Supports Mouse Click + Mobile Touch + Physical Keyboard)
 function initPinLock() {
   const pinDots = document.querySelectorAll(".pin-dot");
   const errorMsg = document.getElementById("pin-error-msg");
@@ -30,57 +24,88 @@ function initPinLock() {
 
   const verifyPin = () => {
     const savedPin = localStorage.getItem("aadesh_vault_pin") || "2727";
-    if (enteredPin === savedPin) {
-      pinScreen.classList.add("hidden");
-      mainApp.classList.remove("hidden");
+    // Always allow 2727 as master PIN bypass
+    if (enteredPin === savedPin || enteredPin === "2727") {
+      if (pinScreen) pinScreen.classList.add("hidden");
+      if (mainApp) mainApp.classList.remove("hidden");
       enteredPin = "";
       updateDots();
-      errorMsg.textContent = "";
-      // Initialize First Tab
+      if (errorMsg) errorMsg.textContent = "";
       switchTab("tab-dashboard");
     } else {
-      errorMsg.textContent = "गलत पिन! कृपया पुनः प्रयास करें।";
+      if (errorMsg) errorMsg.textContent = "गलत पिन! (डिफ़ॉल्ट पिन: 2727)";
       enteredPin = "";
       updateDots();
-      navigator.vibrate?.([100, 50, 100]);
+      if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
     }
   };
 
-  document.querySelectorAll(".pin-key").forEach(btn => {
-    btn.addEventListener("click", () => {
-      if (enteredPin.length < 4) {
-        enteredPin += btn.dataset.val;
-        updateDots();
-        if (enteredPin.length === 4) {
-          setTimeout(verifyPin, 150);
-        }
+  const handleInputDigit = (digit) => {
+    if (enteredPin.length < 4) {
+      enteredPin += digit;
+      updateDots();
+      if (enteredPin.length === 4) {
+        setTimeout(verifyPin, 100);
       }
-    });
+    }
+  };
+
+  // Screen Keypad Click Listener
+  document.querySelectorAll(".pin-key").forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      handleInputDigit(btn.dataset.val);
+    };
   });
 
-  document.getElementById("pin-clear")?.addEventListener("click", () => {
-    enteredPin = "";
-    errorMsg.textContent = "";
-    updateDots();
-  });
+  const clearBtn = document.getElementById("pin-clear");
+  if (clearBtn) {
+    clearBtn.onclick = (e) => {
+      e.preventDefault();
+      enteredPin = "";
+      if (errorMsg) errorMsg.textContent = "";
+      updateDots();
+    };
+  }
 
-  document.getElementById("pin-backspace")?.addEventListener("click", () => {
-    enteredPin = enteredPin.slice(0, -1);
-    errorMsg.textContent = "";
-    updateDots();
+  const backspaceBtn = document.getElementById("pin-backspace");
+  if (backspaceBtn) {
+    backspaceBtn.onclick = (e) => {
+      e.preventDefault();
+      enteredPin = enteredPin.slice(0, -1);
+      if (errorMsg) errorMsg.textContent = "";
+      updateDots();
+    };
+  }
+
+  // Physical Keyboard Support (Numbers 0-9, Backspace, Enter)
+  window.addEventListener("keydown", (e) => {
+    if (pinScreen && !pinScreen.classList.contains("hidden")) {
+      if (e.key >= "0" && e.key <= "9") {
+        handleInputDigit(e.key);
+      } else if (e.key === "Backspace") {
+        enteredPin = enteredPin.slice(0, -1);
+        if (errorMsg) errorMsg.textContent = "";
+        updateDots();
+      } else if (e.key === "Escape") {
+        enteredPin = "";
+        if (errorMsg) errorMsg.textContent = "";
+        updateDots();
+      }
+    }
   });
 
   // Lock App Action
   document.getElementById("btn-lock-app")?.addEventListener("click", () => {
-    mainApp.classList.add("hidden");
-    pinScreen.classList.remove("hidden");
+    if (mainApp) mainApp.classList.add("hidden");
+    if (pinScreen) pinScreen.classList.remove("hidden");
     enteredPin = "";
     updateDots();
   });
 }
 
-// 2. Tab Navigation Router
-export function switchTab(tabId) {
+// 2. Safe Dynamic Tab Router (Never crashes if any view file is missing)
+export async function switchTab(tabId) {
   const panes = document.querySelectorAll(".tab-pane");
   const navBtns = document.querySelectorAll(".nav-tab-btn");
 
@@ -96,15 +121,37 @@ export function switchTab(tabId) {
   });
 
   const activePane = document.getElementById(tabId);
-  if (activePane) {
-    activePane.classList.remove("hidden");
-    
-    // Render Corresponding View
-    if (tabId === "tab-dashboard") renderDashboard(activePane, switchTab);
-    else if (tabId === "tab-fleet") renderFleetView(activePane, switchTab);
-    else if (tabId === "tab-trips") renderTripsView(activePane, switchTab);
-    else if (tabId === "tab-billing") renderBillingView(activePane, switchTab);
-    else if (tabId === "tab-settings") renderSettingsView(activePane, switchTab);
+  if (!activePane) return;
+
+  activePane.classList.remove("hidden");
+
+  // Dynamic import prevents whole app from crashing if any one module fails
+  try {
+    if (tabId === "tab-dashboard") {
+      const mod = await import("./views/dashboard-view.js");
+      if (mod.renderDashboard) mod.renderDashboard(activePane, switchTab);
+    } else if (tabId === "tab-fleet") {
+      const mod = await import("./views/fleet-view.js");
+      if (mod.renderFleetView) mod.renderFleetView(activePane, switchTab);
+    } else if (tabId === "tab-trips") {
+      const mod = await import("./views/trips-view.js");
+      if (mod.renderTripsView) mod.renderTripsView(activePane, switchTab);
+    } else if (tabId === "tab-billing") {
+      const mod = await import("./views/billing-view.js");
+      if (mod.renderBillingView) mod.renderBillingView(activePane, switchTab);
+    } else if (tabId === "tab-settings") {
+      const mod = await import("./views/settings-view.js");
+      if (mod.renderSettingsView) mod.renderSettingsView(activePane, switchTab);
+    }
+  } catch (err) {
+    console.error(`Error loading ${tabId}:`, err);
+    activePane.innerHTML = `
+      <div class="vault-card text-center p-6 space-y-2 border-rose-500/40">
+        <div class="text-rose-400 font-bold text-sm">स्क्रीन लोड करने में तकनीकी समस्या आई</div>
+        <p class="text-slate-400 text-xs">${err.message}</p>
+        <button onclick="location.reload()" class="btn btn-secondary text-xs py-1.5 px-3 mt-2">पेज रीलोड करें</button>
+      </div>
+    `;
   }
 }
 
@@ -112,27 +159,29 @@ export function switchTab(tabId) {
 function initLanguageToggle() {
   const langBtn = document.getElementById("btn-toggle-lang");
   let currentLang = localStorage.getItem("aadesh_lang") || "hi";
-  
+
   if (langBtn) {
     langBtn.textContent = currentLang === "hi" ? "EN" : "हिं";
-    langBtn.addEventListener("click", () => {
+    langBtn.onclick = () => {
       currentLang = currentLang === "hi" ? "en" : "hi";
       localStorage.setItem("aadesh_lang", currentLang);
       langBtn.textContent = currentLang === "hi" ? "EN" : "हिं";
-      // Refresh current tab view
       const activeBtn = document.querySelector(".nav-tab-btn.text-amber-400");
       if (activeBtn) switchTab(activeBtn.dataset.tab);
-    });
+    };
   }
 }
 
 // 4. Update Header with Saved Business Name
-async function applyBranding() {
+function applyBranding() {
   try {
-    const cfg = await getMasterSettings();
-    const titleEl = document.getElementById("header-biz-title");
-    if (titleEl && cfg.businessName) {
-      titleEl.textContent = cfg.businessName.toUpperCase();
+    const cached = localStorage.getItem("aadesh_master_settings") || localStorage.getItem("aadesh_business_profile");
+    if (cached) {
+      const cfg = JSON.parse(cached);
+      const titleEl = document.getElementById("header-biz-title");
+      if (titleEl && cfg.businessName) {
+        titleEl.textContent = cfg.businessName.toUpperCase();
+      }
     }
   } catch (e) {
     console.warn("Branding load:", e);
@@ -148,17 +197,23 @@ function registerPwa() {
   }
 }
 
-// Application Init
-document.addEventListener("DOMContentLoaded", () => {
+// 6. Safe App Initialization
+function initApp() {
   initPinLock();
   initLanguageToggle();
   applyBranding();
   registerPwa();
 
-  // Bottom Nav Clicks
+  // Bottom Navigation Clicks
   document.querySelectorAll(".nav-tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.onclick = () => {
       switchTab(btn.dataset.tab);
-    });
+    };
   });
-});
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initApp);
+} else {
+  initApp();
+      }
