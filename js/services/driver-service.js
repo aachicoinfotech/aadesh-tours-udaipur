@@ -1,149 +1,141 @@
 // js/services/driver-service.js
-// Aadesh Tours Udaipur - Driver Master & Registry (Phase 5)
+// Aadesh Tours Udaipur - Driver Master, DL Compliance & Ledger Service
 
 import { db } from "../config/firebase-config.js";
-import { COLLECTIONS } from "../config/constants.js";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  orderBy
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { addGallaTransaction } from "./galla-service.js";
+import { CASHFLOW_CATEGORIES } from "../config/constants.js";
+
+const COLLECTION_NAME = "drivers";
 
 /**
- * 1. Add New Driver
- */
-export async function addDriver(driverData) {
-  try {
-    const name = (driverData.name || "").trim();
-    const phone = (driverData.phone || "").replace(/\s+/g, "").trim();
-
-    if (!name || !phone) {
-      throw new Error("Driver name and phone number are required.");
-    }
-
-    // Unique Driver ID based on phone or timestamp
-    const driverId = `DRV_${phone.slice(-6)}_${Date.now().toString().slice(-4)}`;
-    const docRef = doc(db, COLLECTIONS.DRIVERS, driverId);
-
-    const newDriver = {
-      id: driverId,
-      name: name,
-      phone: phone,
-      altPhone: (driverData.altPhone || "").trim(),
-      licenseNumber: (driverData.licenseNumber || "").toUpperCase().trim(),
-      licenseExpiry: driverData.licenseExpiry || "", // Format: YYYY-MM-DD
-      assignedVehicleId: driverData.assignedVehicleId || "", // Linked Vehicle Reg No
-      
-      // Default allowances
-      dailyBhatta: Number(driverData.dailyBhatta) || 300,
-      nightCharge: Number(driverData.nightCharge) || 250,
-      
-      status: driverData.status || "ACTIVE", // ACTIVE or INACTIVE
-      dlImageBase64: driverData.dlImageBase64 || "", // Compact base64 string
-      
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    await setDoc(docRef, newDriver);
-    return { success: true, message: `Driver ${name} registered successfully!`, data: newDriver };
-  } catch (error) {
-    console.error("Error adding driver:", error);
-    return { success: false, message: error.message };
-  }
-}
-
-/**
- * 2. Get All Registered Drivers (Sorted Alphabetically)
+ * 1. Sabhi Drivers ki list lana
  */
 export async function getAllDrivers() {
   try {
-    const driversCol = collection(db, COLLECTIONS.DRIVERS);
-    const q = query(driversCol, orderBy("name", "asc"));
-    const querySnapshot = await getDocs(q);
-
-    const drivers = [];
-    querySnapshot.forEach((docSnap) => {
-      drivers.push(docSnap.data());
-    });
+    const q = query(collection(db, COLLECTION_NAME), orderBy("name", "asc"));
+    const snap = await getDocs(q);
+    const drivers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    localStorage.setItem("aadesh_cached_drivers", JSON.stringify(drivers));
     return drivers;
-  } catch (error) {
-    console.warn("Unable to fetch drivers from Firestore, checking cache:", error);
-    return [];
+  } catch (err) {
+    console.warn("Drivers fetch fallback to cache:", err);
+    const cached = localStorage.getItem("aadesh_cached_drivers");
+    return cached ? JSON.parse(cached) : [];
   }
 }
 
 /**
- * 3. Get Single Driver Details
+ * 2. Naya Driver add ya update karna
  */
-export async function getDriverById(driverId) {
+export async function saveDriver(driverData) {
   try {
-    const docRef = doc(db, COLLECTIONS.DRIVERS, driverId);
-    const docSnap = await getDoc(docRef);
-
-    if (docSnap.exists()) {
-      return { success: true, data: docSnap.data() };
-    }
-    return { success: false, message: "Driver not found." };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
-
-/**
- * 4. Update Driver Details
- */
-export async function updateDriver(driverId, updatedFields) {
-  try {
-    const docRef = doc(db, COLLECTIONS.DRIVERS, driverId);
-
+    const driverId = driverData.id || ("DRV-" + (driverData.phone || Date.now()).slice(-6));
     const payload = {
-      ...updatedFields,
+      ...driverData,
+      id: driverId,
+      status: driverData.status || "ACTIVE", // ACTIVE, ON_DUTY, LEAVE
+      dailyBhatta: Number(driverData.dailyBhatta) || 300,
+      advanceBalance: Number(driverData.advanceBalance) || 0,
       updatedAt: new Date().toISOString()
     };
 
-    if (payload.dailyBhatta !== undefined) payload.dailyBhatta = Number(payload.dailyBhatta);
-    if (payload.nightCharge !== undefined) payload.nightCharge = Number(payload.nightCharge);
-
-    await updateDoc(docRef, payload);
-    return { success: true, message: "Driver profile updated successfully!" };
-  } catch (error) {
-    return { success: false, message: error.message };
+    await setDoc(doc(db, COLLECTION_NAME, driverId), payload, { merge: true });
+    return { success: true, id: driverId };
+  } catch (err) {
+    console.error("Save driver error:", err);
+    return { success: false, message: err.message };
   }
 }
 
 /**
- * 5. Delete Driver
+ * 3. Driving License (DL) Expiry Status Check karna
  */
-export async function deleteDriver(driverId) {
-  try {
-    const docRef = doc(db, COLLECTIONS.DRIVERS, driverId);
-    await deleteDoc(docRef);
-    return { success: true, message: "Driver removed successfully." };
-  } catch (error) {
-    return { success: false, message: error.message };
-  }
-}
+export function checkDriverDlStatus(dlExpiryDate) {
+  if (!dlExpiryDate) return { status: "UNREGISTERED", label: "DL दर्ज नहीं", isAlert: false, days: null };
 
-/**
- * 6. Check Expiring Driving Licenses (Alert utility)
- * @param {number} daysThreshold - Alert window in days (default 30 days)
- */
-export async function getExpiringLicenses(daysThreshold = 30) {
-  const drivers = await getAllDrivers();
   const today = new Date();
-  const targetDate = new Date();
-  targetDate.setDate(today.getDate() + daysThreshold);
+  today.setHours(0, 0, 0, 0);
+  const expDate = new Date(dlExpiryDate);
+  expDate.setHours(0, 0, 0, 0);
 
-  return drivers.filter((driver) => {
-    if (!driver.licenseExpiry) return false;
-    const expiry = new Date(driver.licenseExpiry);
-    return expiry >= today && expiry <= targetDate;
-  });
+  const diffDays = Math.ceil((expDate - today) / (1000 * 60 * 60 * 24));
+
+  if (diffDays < 0) {
+    return { status: "EXPIRED", label: `समाप्त (${Math.abs(diffDays)} दिन पूर्व)`, isAlert: true, days: diffDays, color: "text-rose-400" };
+  } else if (diffDays <= 30) {
+    return { status: "EXPIRING_SOON", label: `${diffDays} दिन शेष`, isAlert: true, days: diffDays, color: "text-amber-400" };
+  } else {
+    return { status: "VALID", label: "मान्य (OK)", isAlert: false, days: diffDays, color: "text-emerald-400" };
+  }
+}
+
+/**
+ * 4. Driver ko Raste ka Advance Dena (Galle se Cash Out katna)
+ */
+export async function giveDriverAdvance(driverId, amount, tripSlipNo = "", remarks = "") {
+  try {
+    const amt = Number(amount);
+    if (amt <= 0) throw new Error("अमान्य राशि");
+
+    const driverRef = doc(db, COLLECTION_NAME, driverId);
+    const snap = await getDoc(driverRef);
+    if (!snap.exists()) throw new Error("ड्राइवर नहीं मिला");
+
+    const driver = snap.data();
+    const newBal = (Number(driver.advanceBalance) || 0) + amt;
+
+    // 1. Driver record me advance jodna
+    await setDoc(driverRef, { 
+      advanceBalance: newBal,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    // 2. Galle se Cash Out transaction darj karna
+    await addGallaTransaction({
+      type: "OUT",
+      amount: amt,
+      category: CASHFLOW_CATEGORIES.DRIVER_ADVANCE || "DRIVER_EXPENSE",
+      referenceId: tripSlipNo || driverId,
+      remarks: `Driver Advance: ${driver.name} ${tripSlipNo ? `(Slip #${tripSlipNo})` : ''} - ${remarks}`
+    });
+
+    return { success: true, newBalance: newBal };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
+}
+
+/**
+ * 5. Driver Settlement / Khata Chukta karna
+ */
+export async function settleDriverAccount(driverId, settledAmount, remarks = "") {
+  try {
+    const driverRef = doc(db, COLLECTION_NAME, driverId);
+    const snap = await getDoc(driverRef);
+    if (!snap.exists()) throw new Error("ड्राइवर नहीं मिला");
+
+    const driver = snap.data();
+    const currentAdv = Number(driver.advanceBalance) || 0;
+    const remainingAdv = Math.max(0, currentAdv - Number(settledAmount));
+
+    await setDoc(driverRef, {
+      advanceBalance: remainingAdv,
+      lastSettlementDate: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
+
+    return { success: true, remainingAdvance: remainingAdv };
+  } catch (err) {
+    return { success: false, message: err.message };
+  }
 }
