@@ -1,8 +1,14 @@
-// js/app.js - Aadesh Tours Udaipur - Fleet OS Main Router & App Controller (Global Mode)
-
+// js/app.js - Foolproof Safe Global Router
 document.addEventListener('DOMContentLoaded', () => {
-    setupPinLock();
-    setupTabs();
+    try {
+        setupPinLock();
+        setupTabs();
+    } catch (err) {
+        console.error("App initialization error:", err);
+        // Fallback: Agar koi error aaye toh direct main app dikha do
+        document.getElementById('pin-screen')?.classList.add('hidden');
+        document.getElementById('main-app')?.classList.remove('hidden');
+    }
 });
 
 function setupPinLock() {
@@ -40,22 +46,16 @@ function setupPinLock() {
             });
         });
 
-        const clearBtn = document.getElementById('pin-clear');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', () => {
-                enteredPin = '';
-                updateDots(dots, 0);
-                if (errorMsg) errorMsg.textContent = '';
-            });
-        }
+        document.getElementById('pin-clear')?.addEventListener('click', () => {
+            enteredPin = '';
+            updateDots(dots, 0);
+            if (errorMsg) errorMsg.textContent = '';
+        });
 
-        const backBtn = document.getElementById('pin-backspace');
-        if (backBtn) {
-            backBtn.addEventListener('click', () => {
-                enteredPin = enteredPin.slice(0, -1);
-                updateDots(dots, enteredPin.length);
-            });
-        }
+        document.getElementById('pin-backspace')?.addEventListener('click', () => {
+            enteredPin = enteredPin.slice(0, -1);
+            updateDots(dots, enteredPin.length);
+        });
     }
 }
 
@@ -70,9 +70,15 @@ function updateDots(dots, count) {
 }
 
 function initApp() {
-    const dashPane = document.getElementById('tab-dashboard');
-    if (dashPane && window.DashboardView && typeof window.DashboardView.render === 'function') {
-        window.DashboardView.render('tab-dashboard');
+    try {
+        if (window.DashboardView && typeof window.DashboardView.render === 'function') {
+            window.DashboardView.render('tab-dashboard');
+        } else {
+            const pane = document.getElementById('tab-dashboard');
+            if (pane) pane.innerHTML = '<div class="p-4 text-slate-400">Dashboard load ho raha hai...</div>';
+        }
+    } catch(e) {
+        console.error("Dashboard render error:", e);
     }
     updateLiveGalla();
 }
@@ -89,20 +95,23 @@ function setupTabs() {
             if (targetPane) {
                 targetPane.classList.remove('hidden');
                 
-                if (targetTabId === 'tab-dashboard' && window.DashboardView) {
-                    window.DashboardView.render('tab-dashboard');
-                }
-                if (targetTabId === 'tab-fleet' && window.FleetView) {
-                    window.FleetView.render('tab-fleet');
-                }
-                if (targetTabId === 'tab-trips' && window.TripsView) {
-                    window.TripsView.render('tab-trips');
-                }
-                if (targetTabId === 'tab-billing' && window.BillingView) {
-                    window.BillingView.render('tab-billing');
-                }
-                if (targetTabId === 'tab-settings' && window.SettingsView) {
-                    window.SettingsView.render('tab-settings');
+                try {
+                    if (targetTabId === 'tab-dashboard' && window.DashboardView?.render) {
+                        window.DashboardView.render('tab-dashboard');
+                    } else if (targetTabId === 'tab-fleet' && window.FleetView?.render) {
+                        window.FleetView.render('tab-fleet');
+                    } else if (targetTabId === 'tab-trips' && window.TripsView?.render) {
+                        window.TripsView.render('tab-trips');
+                    } else if (targetTabId === 'tab-billing' && window.BillingView?.render) {
+                        window.BillingView.render('tab-billing');
+                    } else if (targetTabId === 'tab-settings' && window.SettingsView?.render) {
+                        window.SettingsView.render('tab-settings');
+                    } else {
+                        targetPane.innerHTML = `<div class="p-6 text-center text-slate-400">Yeh section jald hi uplabdh hoga.</div>`;
+                    }
+                } catch(err) {
+                    console.error("Tab render error:", err);
+                    targetPane.innerHTML = `<div class="p-6 text-center text-rose-400">View load karne me samasya aayi hai.</div>`;
                 }
             }
 
@@ -115,20 +124,21 @@ function setupTabs() {
         });
     });
 
-    const lockBtn = document.getElementById('btn-lock-app');
-    if (lockBtn) {
-        lockBtn.addEventListener('click', () => {
-            sessionStorage.removeItem('aadesh_unlocked');
-            window.location.reload();
-        });
-    }
+    document.getElementById('btn-lock-app')?.addEventListener('click', () => {
+        sessionStorage.removeItem('aadesh_unlocked');
+        window.location.reload();
+    });
 }
 
 function updateLiveGalla() {
-    const galla = JSON.parse(localStorage.getItem('aadesh_galla') || '{"cashIn": 0, "cashOut": 0}');
-    const netGalla = (galla.cashIn || 0) - (galla.cashOut || 0);
-    const gallaElem = document.getElementById('header-galla-amount');
-    if (gallaElem) {
-        gallaElem.textContent = `₹${netGalla}`;
+    try {
+        const galla = JSON.parse(localStorage.getItem('aadesh_galla') || '{"cashIn": 0, "cashOut": 0}');
+        const netGalla = (galla.cashIn || 0) - (galla.cashOut || 0);
+        const gallaElem = document.getElementById('header-galla-amount');
+        if (gallaElem) {
+            gallaElem.textContent = `₹${netGalla}`;
+        }
+    } catch(e) {
+        console.error("Galla update error:", e);
     }
 }
