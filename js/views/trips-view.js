@@ -1,183 +1,165 @@
-// js/views/trips-view.js
+// js/views/trips-view.js - Aadesh Tours Udaipur Trips Manager
 window.TripsView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
         container.innerHTML = `
-            <div class="max-w-6xl mx-auto p-4 sm:p-6 text-slate-100">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-lg">
+            <div class="space-y-4">
+                <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
-                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
-                            <span>🚗</span> Trips & Duty Slips Manager
-                        </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Aadesh Tours Udaipur - Manage all journeys & bills</p>
+                        <h2 class="text-base font-bold text-amber-400">📋 Trips & Duty Slips Manager</h2>
+                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Manage all journeys</p>
                     </div>
-                    <button onclick="TripsView.openChoiceModal()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2.5 rounded-xl text-sm flex items-center gap-2 transition shadow-md">
-                        <span>➕</span> Nayi Entry / Duty Slip
+                    <button onclick="TripsView.openChoiceModal()" class="btn btn-primary px-3 py-2 text-xs">
+                        ➕ Nayi Entry / Duty Slip
                     </button>
                 </div>
 
-                <div class="bg-slate-900 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
-                    <div class="p-4 border-b border-slate-800 flex justify-between items-center">
-                        <h3 class="font-semibold text-slate-200">Aapki Haal Hi Ki Entries</h3>
-                        <span class="text-xs bg-slate-800 text-amber-400 px-3 py-1 rounded-full font-medium">Live Sync Active</span>
-                    </div>
+                <div class="vault-card overflow-hidden">
                     <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse text-sm">
+                        <table class="tally-table">
                             <thead>
-                                <tr class="bg-slate-950/60 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                                    <th class="p-3">Slip/Bill No</th>
-                                    <th class="p-3">Date & Guest</th>
-                                    <th class="p-3">Vehicle / Driver</th>
-                                    <th class="p-3">Billing Mode</th>
-                                    <th class="p-3">Amount / Status</th>
-                                    <th class="p-3 text-right">Actions</th>
+                                <tr>
+                                    <th>Slip/Bill No</th>
+                                    <th>Date & Guest</th>
+                                    <th>Vehicle</th>
+                                    <th>Mode</th>
+                                    <th>Amount</th>
+                                    <th class="text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="trips-table-body" class="divide-y divide-slate-800/60 text-slate-300"></tbody>
+                            <tbody id="trips-table-body">
+                                <!-- Populated dynamically -->
+                            </tbody>
                         </table>
                     </div>
-                </div>
-
-                <div id="trip-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
-                    <div id="modal-content-box" class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"></div>
                 </div>
             </div>
         `;
         this.loadTrips();
     },
 
+    loadTrips: function() {
+        const tbody = document.getElementById('trips-table-body');
+        if (!tbody) return;
+        const trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
+        if (trips.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-slate-500 py-4">Abhi tak koi trip darj nahi hai.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = trips.map(t => `
+            <tr>
+                <td class="font-mono font-bold text-amber-400">${t.slipNo}</td>
+                <td>
+                    <div class="font-semibold text-slate-200">${t.party}</div>
+                    <div class="text-[10px] text-slate-400">${t.date}</div>
+                </td>
+                <td>${t.vehicle}</td>
+                <td class="uppercase text-[10px] text-slate-400">${t.mode}</td>
+                <td>
+                    <div class="font-bold text-slate-100">₹${t.grandTotal}</div>
+                    <div class="text-[10px] ${t.balanceDue > 0 ? 'text-amber-400' : 'text-emerald-400'}">${t.balanceDue > 0 ? 'Due: ₹' + t.balanceDue : 'Paid'}</div>
+                </td>
+                <td class="text-right">
+                    <button onclick="TripsView.viewBill('${t.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px]">Bill Dekhein</button>
+                </td>
+            </tr>
+        `).join('');
+    },
+
     openChoiceModal: function() {
-        const modal = document.getElementById('trip-modal');
-        const box = document.getElementById('modal-content-box');
-        box.innerHTML = `
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-6 border-b border-slate-800 pb-3">
-                    <h3 class="text-lg font-bold text-amber-400">Kya banana chahte hain aap?</h3>
-                    <button onclick="TripsView.closeModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+        const modal = document.getElementById('modal-container');
+        const content = document.getElementById('modal-content');
+        if (!modal || !content) return;
+
+        content.innerHTML = `
+            <div class="p-4 space-y-4">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 class="text-sm font-bold text-amber-400">Kya banana chahte hain aap?</h3>
+                    <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white">&times;</button>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <button onclick="TripsView.openEntryForm('duty-slip')" class="p-6 bg-slate-800 border-2 border-slate-700 hover:border-amber-500 rounded-xl text-left transition group">
-                        <div class="text-2xl mb-2">📋</div>
-                        <h4 class="font-bold text-slate-100 group-hover:text-amber-400 text-base">Duty Slip (Log Sheet)</h4>
-                        <p class="text-xs text-slate-400 mt-1">Customer se sign karwane ke liye physical log sheet.</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button onclick="document.getElementById('modal-container').classList.add('hidden'); if(window.DutySlipView) DutySlipView.render('tab-trips');" class="vault-card text-left hover:border-amber-500 transition">
+                        <div class="text-xl mb-1">📋</div>
+                        <h4 class="font-bold text-slate-100 text-xs">Duty Slip (Log Sheet)</h4>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Physical log sheet for customer signature.</p>
                     </button>
-                    <button onclick="TripsView.openEntryForm('final-bill')" class="p-6 bg-slate-800 border-2 border-slate-700 hover:border-amber-500 rounded-xl text-left transition group">
-                        <div class="text-2xl mb-2">🧾</div>
-                        <h4 class="font-bold text-slate-100 group-hover:text-amber-400 text-base">Final Bill / Invoice</h4>
-                        <p class="text-xs text-slate-400 mt-1">Yatra khatam hone par pakka red billbook invoice.</p>
+                    <button onclick="TripsView.openFinalBillForm()" class="vault-card text-left hover:border-amber-500 transition">
+                        <div class="text-xl mb-1">🧾</div>
+                        <h4 class="font-bold text-slate-100 text-xs">Final Bill / Invoice</h4>
+                        <p class="text-[10px] text-slate-400 mt-0.5">Red billbook professional invoice.</p>
                     </button>
                 </div>
             </div>
         `;
         modal.classList.remove('hidden');
-        modal.classList.add('flex');
     },
 
-    closeModal: function() {
-        document.getElementById('trip-modal').classList.add('hidden');
-        document.getElementById('trip-modal').classList.remove('flex');
-    },
-
-    openEntryForm: function(type) {
-        if (type === 'duty-slip') {
-            this.closeModal();
-            if (window.DutySlipView) window.DutySlipView.render('app-container');
-            return;
-        }
-
-        const box = document.getElementById('modal-content-box');
+    openFinalBillForm: function() {
+        const content = document.getElementById('modal-content');
         const slipNo = 'ATU-' + Math.floor(1000 + Math.random() * 9000);
         const today = new Date().toISOString().split('T')[0];
 
-        box.innerHTML = `
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4 border-b border-slate-800 pb-3">
-                    <h3 class="text-lg font-bold text-amber-400">🧾 Naya Final Bill / Invoice</h3>
-                    <button onclick="TripsView.closeModal()" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
+        content.innerHTML = `
+            <div class="p-4 space-y-3">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <h3 class="text-sm font-bold text-amber-400">🧾 Naya Final Bill / Invoice</h3>
+                    <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white">&times;</button>
                 </div>
-                <form onsubmit="TripsView.saveFinalBill(event)" class="space-y-4 text-sm">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <form onsubmit="TripsView.saveFinalBill(event)" class="space-y-3 text-xs">
+                    <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Bill / Slip No</label>
-                            <input type="text" id="fb-slip" value="${slipNo}" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300 font-mono">
+                            <label class="form-label">Bill No</label>
+                            <input type="text" id="fb-slip" value="${slipNo}" readonly class="form-input font-mono">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Date</label>
-                            <input type="date" id="fb-date" value="${today}" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Party / Guest Name *</label>
-                            <input type="text" id="fb-party" required placeholder="Guest Name" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Vehicle Number *</label>
-                            <input type="text" id="fb-vehicle" required placeholder="RJ-27-PA-0000" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
+                            <label class="form-label">Date</label>
+                            <input type="date" id="fb-date" value="${today}" class="form-input">
                         </div>
                     </div>
-                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
-                        <label class="block text-xs font-semibold text-amber-400 mb-2">Billing Mode:</label>
-                        <select id="fb-mode" onchange="TripsView.toggleModeFields()" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-slate-300 font-medium">
-                            <option value="outstation">🚗 Outstation (KM + Bhatta)</option>
-                            <option value="package">📦 Fixed Package (Airport / Local)</option>
-                            <option value="corporate">🏢 Corporate / Custom</option>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="form-label">Party / Guest Name *</label>
+                            <input type="text" id="fb-party" required class="form-input" placeholder="Guest Name">
+                        </div>
+                        <div>
+                            <label class="form-label">Vehicle Number *</label>
+                            <input type="text" id="fb-vehicle" required class="form-input" placeholder="RJ-27-PA-0000">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="form-label">Billing Mode</label>
+                        <select id="fb-mode" onchange="TripsView.toggleModeFields()" class="form-select">
+                            <option value="outstation">Outstation (KM + Bhatta)</option>
+                            <option value="package">Fixed Package (Airport/Local)</option>
+                            <option value="corporate">Corporate / Custom</option>
                         </select>
                     </div>
-                    <div id="mode-fields-container" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div id="mode-fields-container" class="grid grid-cols-3 gap-2">
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Start KM</label>
-                            <input type="number" id="fb-start-km" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
+                            <label class="form-label">Start KM</label>
+                            <input type="number" id="fb-start-km" value="0" class="form-input">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">End KM</label>
-                            <input type="number" id="fb-end-km" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
+                            <label class="form-label">End KM</label>
+                            <input type="number" id="fb-end-km" value="0" class="form-input">
                         </div>
                         <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Rate per KM (₹)</label>
-                            <input type="number" id="fb-rate" value="12" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Toll (₹)</label>
-                            <input type="number" id="fb-toll" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Parking (₹)</label>
-                            <input type="number" id="fb-parking" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Border Tax (₹)</label>
-                            <input type="number" id="fb-border" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Advance (₹)</label>
-                            <input type="number" id="fb-advance" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
+                            <label class="form-label">Rate / KM</label>
+                            <input type="number" id="fb-rate" value="12" class="form-input">
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800">
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Payment Receiver</label>
-                            <select id="fb-pay-receiver" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                                <option value="cash-office">💵 Cash (Office / Galla)</option>
-                                <option value="online-bank">📱 Online (SBI Bank / UPI)</option>
-                                <option value="driver-cash">👤 Driver ke Paas</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Tax Invoice?</label>
-                            <select id="fb-is-tax" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300">
-                                <option value="no">Normal Bill (Non-Tax)</option>
-                                <option value="yes">GST Tax Invoice</option>
-                            </select>
-                        </div>
+                    <div class="grid grid-cols-4 gap-2">
+                        <div><label class="form-label">Toll</label><input type="number" id="fb-toll" value="0" class="form-input"></div>
+                        <div><label class="form-label">Parking</label><input type="number" id="fb-parking" value="0" class="form-input"></div>
+                        <div><label class="form-label">Border</label><input type="number" id="fb-border" value="0" class="form-input"></div>
+                        <div><label class="form-label">Advance</label><input type="number" id="fb-advance" value="0" class="form-input"></div>
                     </div>
-                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                        <button type="button" onclick="TripsView.closeModal()" class="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl">Radd</button>
-                        <button type="submit" class="px-5 py-2 bg-amber-500 text-slate-950 rounded-xl font-bold">Save Bill</button>
+                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                        <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="btn btn-secondary px-3 py-1.5">Radd</button>
+                        <button type="submit" class="btn btn-primary px-4 py-1.5">Save Bill</button>
                     </div>
                 </form>
             </div>
@@ -188,11 +170,11 @@ window.TripsView = {
         const mode = document.getElementById('fb-mode').value;
         const container = document.getElementById('mode-fields-container');
         if (mode === 'package') {
-            container.innerHTML = `<div class="sm:col-span-3"><label class="block text-xs font-semibold text-amber-400 mb-1">Fixed Package Amount (₹)</label><input type="number" id="fb-package-amount" value="800" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 font-bold text-lg"></div>`;
+            container.innerHTML = `<div class="col-span-3"><label class="form-label">Fixed Package Amount (₹)</label><input type="number" id="fb-package-amount" value="800" class="form-input font-bold text-amber-400"></div>`;
         } else if (mode === 'corporate') {
-            container.innerHTML = `<div class="sm:col-span-2"><label class="block text-xs font-semibold text-amber-400 mb-1">Corporate Amount (₹)</label><input type="number" id="fb-corp-amount" value="5000" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 font-bold text-lg"></div><div><label class="block text-xs font-semibold text-slate-400 mb-1">Ref No</label><input type="text" id="fb-corp-ref" placeholder="Ref No" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300"></div>`;
+            container.innerHTML = `<div class="col-span-2"><label class="form-label">Corporate Amount (₹)</label><input type="number" id="fb-corp-amount" value="5000" class="form-input font-bold text-amber-400"></div><div><label class="form-label">Ref No</label><input type="text" id="fb-corp-ref" class="form-input"></div>`;
         } else {
-            container.innerHTML = `<div><label class="block text-xs font-semibold text-slate-400 mb-1">Start KM</label><input type="number" id="fb-start-km" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300"></div><div><label class="block text-xs font-semibold text-slate-400 mb-1">End KM</label><input type="number" id="fb-end-km" value="0" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300"></div><div><label class="block text-xs font-semibold text-slate-400 mb-1">Rate per KM</label><input type="number" id="fb-rate" value="12" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-300"></div>`;
+            container.innerHTML = `<div><label class="form-label">Start KM</label><input type="number" id="fb-start-km" value="0" class="form-input"></div><div><label class="form-label">End KM</label><input type="number" id="fb-end-km" value="0" class="form-input"></div><div><label class="form-label">Rate / KM</label><input type="number" id="fb-rate" value="12" class="form-input"></div>`;
         }
     },
 
@@ -207,8 +189,6 @@ window.TripsView = {
         const parking = parseFloat(document.getElementById('fb-parking').value) || 0;
         const border = parseFloat(document.getElementById('fb-border').value) || 0;
         const advance = parseFloat(document.getElementById('fb-advance').value) || 0;
-        const receiver = document.getElementById('fb-pay-receiver').value;
-        const isTax = document.getElementById('fb-is-tax').value === 'yes';
 
         let totalAmount = 0, kmRun = 0;
         if (mode === 'package') totalAmount = parseFloat(document.getElementById('fb-package-amount').value) || 0;
@@ -225,47 +205,30 @@ window.TripsView = {
 
         const billObj = {
             id: 'BILL-' + Date.now(), slipNo, date, party, vehicle, mode, kmRun,
-            totalAmount, toll, parking, border, grandTotal, advance, balanceDue, receiver, isTax
+            totalAmount, toll, parking, border, grandTotal, advance, balanceDue, receiver: 'cash-office', isTax: false
         };
 
         let trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
         trips.unshift(billObj);
         localStorage.setItem('aadesh_trips', JSON.stringify(trips));
 
-        if (advance > 0 && receiver === 'cash-office') {
+        if (advance > 0) {
             let galla = JSON.parse(localStorage.getItem('aadesh_galla') || '{"cashIn": 0, "cashOut": 0}');
             galla.cashIn = (galla.cashIn || 0) + advance;
             localStorage.setItem('aadesh_galla', JSON.stringify(galla));
         }
 
-        this.closeModal();
-        this.loadTrips();
-        if (window.BillingView) window.BillingView.render('app-container', billObj);
-    },
-
-    loadTrips: function() {
-        const tbody = document.getElementById('trips-table-body');
-        if (!tbody) return;
-        const trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
-        if (trips.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-500">Abhi tak koi trip darj nahi hai. "+ Nayi Entry" par click karein.</td></tr>`;
-            return;
-        }
-        tbody.innerHTML = trips.map(t => `
-            <tr class="hover:bg-slate-800/40 transition">
-                <td class="p-3 font-mono font-bold text-amber-400">${t.slipNo}</td>
-                <td class="p-3"><div class="font-semibold text-slate-200">${t.party}</div><div class="text-xs text-slate-400">${t.date}</div></td>
-                <td class="p-3 font-medium text-slate-300">${t.vehicle}</td>
-                <td class="p-3 uppercase text-xs font-semibold text-slate-400">${t.mode}</td>
-                <td class="p-3"><div class="font-bold text-slate-100">₹${t.grandTotal}</div><div class="text-xs ${t.balanceDue > 0 ? 'text-amber-400 font-semibold' : 'text-emerald-400'}">${t.balanceDue > 0 ? 'Due: ₹' + t.balanceDue : 'Paid'}</div></td>
-                <td class="p-3 text-right"><button onclick="TripsView.viewBill('${t.id}')" class="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition">Bill Dekhein</button></td>
-            </tr>
-        `).join('');
+        document.getElementById('modal-container').classList.add('hidden');
+        window.switchTab('tab-billing');
+        if (window.BillingView) window.BillingView.render('tab-billing', billObj);
     },
 
     viewBill: function(id) {
         const trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
         const bill = trips.find(t => t.id === id);
-        if (bill && window.BillingView) window.BillingView.render('app-container', bill);
+        if (bill && window.BillingView) {
+            window.switchTab('tab-billing');
+            window.BillingView.render('tab-billing', bill);
+        }
     }
 };
