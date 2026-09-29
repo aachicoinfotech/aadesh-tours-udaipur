@@ -1,8 +1,36 @@
 // js/views/billing-view.js
-// Aadesh Tours Udaipur - Rock-Solid Billing & Direct Invoice Controller
+// Aadesh Tours Udaipur - Complete Billing, Edit, Delete & Branded PDF/Print Controller
 
 import { db } from "../config/firebase-config.js";
-import { collection, doc, setDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDocs, 
+  deleteDoc, 
+  query, 
+  orderBy 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Helper to retrieve saved Company Profile from settings
+function getCompanyProfile() {
+  try {
+    const raw = localStorage.getItem("aadesh_master_settings") || localStorage.getItem("aadesh_business_profile");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Company profile parse error:", e);
+  }
+  return {
+    businessName: "Aadesh Tours Udaipur",
+    tagline: "Taxi & Tour Operator - Powered by Aachico Infotech",
+    phone: "8118878912",
+    altPhone: "",
+    address: "Udaipur, Rajasthan - 313001",
+    gstNumber: "",
+    upiId: "8118878912@upi",
+    terms: "1. All disputes subject to Udaipur jurisdiction.\n2. Parking and toll tax extra if not included."
+  };
+}
 
 export async function renderBillingView(containerEl, onNavigate) {
   let invoices = [];
@@ -30,47 +58,58 @@ export async function renderBillingView(containerEl, onNavigate) {
   } else {
     invoiceListHtml = invoices.map(inv => {
       const isUnpaid = Number(inv.balanceDue) > 0;
-      const borderClass = isUnpaid ? "border-l-rose-500" : "border-l-emerald-500";
+      const borderClass = isUnpaid ? "border-l-rose-500 bg-rose-500/5" : "border-l-emerald-500";
       const statusBadge = isUnpaid ? '<span class="badge-status badge-danger">DUE</span>' : '<span class="badge-status badge-active">PAID</span>';
       const bType = inv.isGstInvoice ? '<span class="badge-status badge-info">GST</span>' : '<span class="badge-status badge-warning">BILL</span>';
 
       return `
-        <div class="vault-card space-y-2 border-l-4 ${borderClass} text-xs">
+        <div class="vault-card space-y-2.5 border-l-4 ${borderClass} text-xs">
           <div class="flex items-center justify-between">
             <div class="flex items-center gap-1.5">
-              <span class="font-mono font-bold text-white">${inv.invoiceNumber}</span>
+              <span class="font-mono font-bold text-white text-sm">${inv.invoiceNumber}</span>
               ${bType}
               ${statusBadge}
             </div>
             <span class="text-slate-400 font-mono text-[11px]">${inv.invoiceDate || ''}</span>
           </div>
 
-          <div class="bg-slate-950/50 p-2 rounded-lg grid grid-cols-2 gap-2 text-[11px]">
+          <div class="bg-slate-950/60 p-2.5 rounded-xl grid grid-cols-2 gap-2 text-[11px] border border-slate-800">
             <div>
-              <span class="text-slate-400 block">ग्राहक / पार्टी:</span>
+              <span class="text-slate-400 block text-[10px]">ग्राहक / पार्टी:</span>
               <span class="font-bold text-white text-xs">${inv.customerName}</span>
               <span class="text-slate-400 block font-mono">${inv.customerPhone || '-'}</span>
             </div>
             <div>
-              <span class="text-slate-400 block">गाड़ी व रूट:</span>
+              <span class="text-slate-400 block text-[10px]">गाड़ी व रूट:</span>
               <span class="font-mono text-amber-400 font-bold">${inv.vehicleNumber || 'टैक्सी'}</span>
               <span class="text-slate-300 block truncate">${inv.pickupLocation || 'लोकल'}</span>
             </div>
           </div>
 
-          <div class="flex items-center justify-between font-mono pt-1 text-[11px]">
+          <div class="flex items-center justify-between font-mono bg-slate-900/60 p-2 rounded-lg text-[11px]">
             <div>कुल: <span class="text-white font-bold">₹${(Number(inv.totalAmount) || 0).toLocaleString('en-IN')}</span></div>
-            <div>जमा: <span class="text-emerald-400">₹${(Number(inv.advancePaid) || 0).toLocaleString('en-IN')}</span></div>
+            <div>जमा: <span class="text-emerald-400 font-bold">₹${(Number(inv.advancePaid) || 0).toLocaleString('en-IN')}</span></div>
             <div>बकाया: <span class="text-rose-400 font-bold">₹${(Number(inv.balanceDue) || 0).toLocaleString('en-IN')}</span></div>
           </div>
 
-          <div class="flex justify-end gap-2 pt-1 border-t border-slate-800">
-            <button class="btn btn-secondary py-1 px-2.5 text-[11px] btn-share-wa" data-inv="${inv.invoiceNumber}">
-              📲 WhatsApp शेयर
-            </button>
-            <button class="btn btn-secondary py-1 px-2.5 text-[11px] btn-print-thermal" data-inv="${inv.invoiceNumber}">
-              🖨️ पर्ची
-            </button>
+          <!-- All Action Buttons: Share, Print/PDF, Edit, Delete -->
+          <div class="flex flex-wrap items-center justify-between gap-1.5 pt-1 border-t border-slate-800">
+            <div class="flex gap-1.5">
+              <button class="btn btn-secondary py-1 px-2.5 text-[11px] text-emerald-400 btn-share-wa" data-inv="${inv.invoiceNumber}">
+                📲 WhatsApp
+              </button>
+              <button class="btn btn-secondary py-1 px-2.5 text-[11px] text-sky-400 btn-print-invoice" data-inv="${inv.invoiceNumber}">
+                🖨️ प्रिंट / PDF
+              </button>
+            </div>
+            <div class="flex gap-1.5">
+              <button class="btn btn-secondary py-1 px-2.5 text-[11px] btn-edit-invoice" data-inv="${inv.invoiceNumber}">
+                ✏️ एडिट
+              </button>
+              <button class="btn btn-danger py-1 px-2 text-[11px] btn-delete-invoice" data-inv="${inv.invoiceNumber}">
+                🗑️
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -83,7 +122,7 @@ export async function renderBillingView(containerEl, onNavigate) {
         <h2 class="text-lg font-black text-white">बिलिंग व इनवॉइस</h2>
         <p class="text-xs text-slate-400">कुल बिल: <span class="font-mono text-amber-400 font-bold">${invoices.length}</span></p>
       </div>
-      <button id="btn-open-direct-bill" class="btn btn-primary text-xs py-2 px-3 font-bold">
+      <button id="btn-open-direct-bill" class="btn btn-primary text-xs py-2 px-3 font-bold shadow-lg">
         + नया बिल बनाएं
       </button>
     </div>
@@ -99,17 +138,17 @@ export async function renderBillingView(containerEl, onNavigate) {
         <div class="stat-value text-sm text-emerald-400">₹${totalCollected.toLocaleString('en-IN')}</div>
       </div>
       <div class="stat-metric p-2 border-rose-500/30">
-        <div class="stat-label text-[10px] text-rose-400">बाकी (Due)</div>
+        <div class="stat-label text-[10px] text-rose-400">बाकी (DUE)</div>
         <div class="stat-value text-sm text-rose-400">₹${totalDue.toLocaleString('en-IN')}</div>
       </div>
     </div>
 
-    <div class="space-y-2.5">
+    <div class="space-y-3">
       ${invoiceListHtml}
     </div>
   `;
 
-  // Bind Events
+  // Bind UI Events
   const modalContainer = document.getElementById("modal-container");
   const modalContent = document.getElementById("modal-content");
 
@@ -123,229 +162,258 @@ export async function renderBillingView(containerEl, onNavigate) {
     modalContent.innerHTML = "";
   };
 
+  // 1. Create New Invoice
   document.getElementById("btn-open-direct-bill")?.addEventListener("click", () => {
-    openInvoiceModal(openModal, closeModal, containerEl, onNavigate);
+    openInvoiceModal(null, openModal, closeModal, containerEl, onNavigate);
   });
 
+  // 2. Edit Invoice
+  containerEl.querySelectorAll(".btn-edit-invoice").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const invNum = btn.dataset.inv;
+      const inv = invoices.find(i => i.invoiceNumber === invNum);
+      if (inv) openInvoiceModal(inv, openModal, closeModal, containerEl, onNavigate);
+    });
+  });
+
+  // 3. Delete Invoice
+  containerEl.querySelectorAll(".btn-delete-invoice").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const invNum = btn.dataset.inv;
+      if (confirm(`क्या आप सच में बिल #${invNum} को हमेशा के लिए डिलीट करना चाहते हैं?`)) {
+        try {
+          await deleteDoc(doc(db, "invoices", invNum));
+          alert(`बिल #${invNum} सफलतापूर्वक हटा दिया गया!`);
+          renderBillingView(containerEl, onNavigate);
+        } catch (err) {
+          alert("डिलीट करने में त्रुटि: " + err.message);
+        }
+      }
+    });
+  });
+
+  // 4. WhatsApp Share
   containerEl.querySelectorAll(".btn-share-wa").forEach(btn => {
     btn.addEventListener("click", () => {
       const invNum = btn.dataset.inv;
       const inv = invoices.find(i => i.invoiceNumber === invNum);
       if (!inv) return;
-      const msg = `*AADESH TOURS UDAIPUR*\nबिल नंबर: ${inv.invoiceNumber}\nपार्टी: ${inv.customerName}\nगाड़ी: ${inv.vehicleNumber}\nकुल राशि: ₹${inv.totalAmount}\nजमा: ₹${inv.advancePaid}\n*बकाया: ₹${inv.balanceDue}*\nधन्यवाद!`;
-      const url = `https://wa.me/${inv.customerPhone ? ('91' + inv.customerPhone.replace(/\D/g,'')) : ''}?text=${encodeURIComponent(msg)}`;
+      const comp = getCompanyProfile();
+      const msg = `*${comp.businessName.toUpperCase()}*\n${comp.address}\n📞 संपर्क: ${comp.phone}\n----------------------------------\n*टैक्सी इनवॉइस / बिल*\nबिल नं: *${inv.invoiceNumber}*\nतारीख: ${inv.invoiceDate || ''}\nपार्टी: *${inv.customerName}* (${inv.customerPhone || '-' })\nगाड़ी नं: *${inv.vehicleNumber || 'टैक्सी'}*\nरूट: ${inv.pickupLocation || 'Local'}\nदिन: ${inv.totalDays || 1} | KM: ${inv.totalKm || 0}\n----------------------------------\nकुल किराया: ₹${Number(inv.totalAmount || 0).toLocaleString('en-IN')}\nजमा एडवांस: ₹${Number(inv.advancePaid || 0).toLocaleString('en-IN')}\n*बकाया (Balance): ₹${Number(inv.balanceDue || 0).toLocaleString('en-IN')}*\n----------------------------------\nधन्यवाद! यात्रा मंगलमय हो।`;
+      const phoneDigits = inv.customerPhone ? inv.customerPhone.replace(/\D/g, '') : '';
+      const url = `https://wa.me/${phoneDigits ? ('91' + phoneDigits) : ''}?text=${encodeURIComponent(msg)}`;
       window.open(url, "_blank");
     });
   });
 
-  containerEl.querySelectorAll(".btn-print-thermal").forEach(btn => {
+  // 5. Professional Branded Print & PDF Export (Company Profile Integrated)
+  containerEl.querySelectorAll(".btn-print-invoice").forEach(btn => {
     btn.addEventListener("click", () => {
       const invNum = btn.dataset.inv;
       const inv = invoices.find(i => i.invoiceNumber === invNum);
       if (!inv) return;
-      window.print();
+      printCompanyInvoice(inv);
     });
   });
 }
 
-function openInvoiceModal(openModal, closeModal, containerEl, onNavigate) {
+/**
+ * GENERATE AND PRINT / DOWNLOAD PROFESSIONAL PDF INVOICE
+ */
+function printCompanyInvoice(inv) {
+  const comp = getCompanyProfile();
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert("कृपया पॉप-अप अनुमति दें ताकि बिल प्रिंट व PDF डाउनलोड हो सके।");
+    return;
+  }
+
+  const isPaid = Number(inv.balanceDue) <= 0;
+  const statusColor = isPaid ? "#10b981" : "#ef4444";
+  const statusText = isPaid ? "PAID / चुकता" : `DUE: ₹${Number(inv.balanceDue).toLocaleString('en-IN')}`;
+
+  const html = `
+    <!DOCTYPE html>
+    <html lang="hi">
+    <head>
+      <meta charset="UTF-8">
+      <title>Invoice - ${inv.invoiceNumber} - ${comp.businessName}</title>
+      <style>
+        @page { size: A4; margin: 15mm; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 13px; line-height: 1.5; background: #fff; }
+        .invoice-card { max-width: 800px; margin: auto; border: 1px solid #cbd5e1; padding: 24px; border-radius: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px; }
+        .company-name { font-size: 24px; font-weight: 900; color: #0f172a; text-transform: uppercase; margin: 0; }
+        .company-sub { font-size: 11px; font-weight: 600; color: #d97706; margin-top: 2px; }
+        .company-meta { font-size: 11px; color: #475569; margin-top: 6px; }
+        .inv-badge-box { text-align: right; }
+        .inv-title { font-size: 20px; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: 1px; }
+        .inv-number { font-family: monospace; font-size: 15px; font-weight: 700; color: #d97706; margin-top: 4px; }
+        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; background: #f8fafc; padding: 14px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #e2e8f0; }
+        .meta-title { font-size: 10px; font-weight: 800; text-transform: uppercase; color: #64748b; margin-bottom: 4px; }
+        .meta-value { font-weight: 700; font-size: 13px; color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th { background: #0f172a; color: #fff; text-align: left; padding: 8px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+        td { padding: 9px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
+        .text-right { text-align: right; }
+        .totals-table { width: 280px; margin-left: auto; margin-bottom: 20px; }
+        .totals-table td { padding: 6px 10px; }
+        .grand-total { font-size: 15px; font-weight: 900; color: #0f172a; border-top: 2px solid #0f172a; border-bottom: 2px solid #0f172a; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-weight: 800; font-size: 12px; color: #fff; background: ${statusColor}; margin-top: 6px; }
+        .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; border-top: 1px solid #cbd5e1; padding-top: 14px; margin-top: 10px; font-size: 11px; color: #475569; }
+        .sign-box { text-align: right; margin-top: 30px; }
+        .sign-line { border-top: 1px solid #94a3b8; display: inline-block; width: 160px; padding-top: 4px; font-weight: 700; font-size: 11px; color: #0f172a; text-align: center; }
+        .btn-print-bar { text-align: center; margin-bottom: 20px; }
+        .btn-pdf { background: #d97706; color: #fff; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 800; font-size: 14px; cursor: pointer; }
+        @media print {
+          .btn-print-bar { display: none; }
+          body { padding: 0; }
+          .invoice-card { border: none; padding: 0; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="btn-print-bar">
+        <button class="btn-pdf" onclick="window.print()">📥 PDF डाउनलोड / प्रिंट करें</button>
+      </div>
+
+      <div class="invoice-card">
+        <!-- Header with saved Company Profile -->
+        <div class="header">
+          <div>
+            <h1 class="company-name">${comp.businessName}</h1>
+            <div class="company-sub">${comp.tagline || 'Taxi & Travel Service Udaipur'}</div>
+            <div class="company-meta">
+              📍 ${comp.address}<br>
+              📞 फ़ोन: ${comp.phone} ${comp.altPhone ? ('/ ' + comp.altPhone) : ''}<br>
+              ${comp.gstNumber ? ('<strong>GSTIN:</strong> ' + comp.gstNumber) : ''}
+            </div>
+          </div>
+          <div class="inv-badge-box">
+            <h2 class="inv-title">${inv.isGstInvoice ? 'TAX INVOICE' : 'DUTY SLIP / BILL'}</h2>
+            <div class="inv-number"># ${inv.invoiceNumber}</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 2px;">तारीख: <strong>${inv.invoiceDate || ''}</strong></div>
+            <div class="status-badge">${statusText}</div>
+          </div>
+        </div>
+
+        <!-- Billed Party & Journey Meta -->
+        <div class="meta-grid">
+          <div>
+            <div class="meta-title">ग्राहक / पार्टी (Billed To):</div>
+            <div class="meta-value">${inv.customerName}</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 2px;">फ़ोन: <strong>${inv.customerPhone || '-'}</strong></div>
+          </div>
+          <div>
+            <div class="meta-title">गाड़ी व यात्रा विवरण (Vehicle & Route):</div>
+            <div class="meta-value" style="color: #d97706; font-family: monospace;">${inv.vehicleNumber || 'टैक्सी'}</div>
+            <div style="font-size: 12px; color: #475569; margin-top: 2px;">रूट: <strong>${inv.pickupLocation || 'लोकल उदयपुर'}</strong></div>
+          </div>
+        </div>
+
+        <!-- Billing Items Table -->
+        <table>
+          <thead>
+            <tr>
+              <th>विवरण (Description)</th>
+              <th class="text-right">दिन (Days)</th>
+              <th class="text-right">किमी (KM)</th>
+              <th class="text-right">दर (Rate)</th>
+              <th class="text-right">राशि (Amount)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <strong>टैक्सी किराया (Vehicle Fare)</strong><br>
+                <span style="font-size: 11px; color: #64748b;">वाहन: ${inv.vehicleNumber || 'Cab'} (${inv.totalDays || 1} दिन)</span>
+              </td>
+              <td class="text-right">${inv.totalDays || 1}</td>
+              <td class="text-right">${inv.totalKm || 0}</td>
+              <td class="text-right">₹${inv.ratePerKm || 0}</td>
+              <td class="text-right">₹${Number(inv.totalKm && inv.ratePerKm ? (inv.totalKm * inv.ratePerKm) : (inv.totalAmount || 0)).toLocaleString('en-IN')}</td>
+            </tr>
+            ${Number(inv.driverBhatta) > 0 ? `
+              <tr>
+                <td><strong>ड्राइवर भत्ता (Driver Bhatta)</strong></td>
+                <td class="text-right">${inv.totalDays || 1}</td>
+                <td class="text-right">-</td>
+                <td class="text-right">-</td>
+                <td class="text-right">₹${Number(inv.driverBhatta).toLocaleString('en-IN')}</td>
+              </tr>
+            ` : ''}
+            ${Number(inv.tollCharges) > 0 ? `
+              <tr>
+                <td><strong>टोल व पार्किंग (Toll & Parking)</strong></td>
+                <td class="text-right">-</td>
+                <td class="text-right">-</td>
+                <td class="text-right">-</td>
+                <td class="text-right">₹${Number(inv.tollCharges).toLocaleString('en-IN')}</td>
+              </tr>
+            ` : ''}
+            ${inv.isGstInvoice ? `
+              <tr>
+                <td><strong>जीएसटी (GST @ 5%)</strong></td>
+                <td class="text-right">-</td>
+                <td class="text-right">-</td>
+                <td class="text-right">5%</td>
+                <td class="text-right">जुड़ा हुआ</td>
+              </tr>
+            ` : ''}
+          </tbody>
+        </table>
+
+        <!-- Totals & Payment Breakdown -->
+        <table class="totals-table">
+          <tr>
+            <td class="meta-title">कुल राशि (Total):</td>
+            <td class="text-right" style="font-weight: 700;">₹${Number(inv.totalAmount || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          <tr>
+            <td class="meta-title" style="color: #10b981;">जमा एडवांस (Advance):</td>
+            <td class="text-right" style="font-weight: 700; color: #10b981;">₹${Number(inv.advancePaid || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          <tr class="grand-total">
+            <td>बकाया (Balance Due):</td>
+            <td class="text-right" style="color: ${Number(inv.balanceDue) > 0 ? '#ef4444' : '#10b981'};">₹${Number(inv.balanceDue || 0).toLocaleString('en-IN')}</td>
+          </tr>
+        </table>
+
+        <!-- Footer / UPI & Bank / Terms -->
+        <div class="footer-grid">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 2px;">भुगतान नियम व UPI:</div>
+            <div>📲 UPI ID: <strong>${comp.upiId || '8118878912@upi'}</strong></div>
+            <div style="margin-top: 6px; font-size: 10px; color: #64748b; white-space: pre-line;">${comp.terms || '1. All disputes subject to Udaipur jurisdiction.'}</div>
+          </div>
+          <div class="sign-box">
+            <div class="sign-line">हस्ताक्षर / Authorised Signatory<br><strong style="font-size: 10px;">${comp.businessName}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <script>
+        window.onload = function() {
+          setTimeout(() => { window.print(); }, 400);
+        };
+      </script>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
+}
+
+/**
+ * MODAL: CREATE / EDIT TAXI INVOICE
+ */
+function openInvoiceModal(invoiceToEdit, openModal, closeModal, containerEl, onNavigate) {
+  const isEdit = !!invoiceToEdit;
   const today = new Date().toISOString().slice(0, 10);
-  const autoInv = "ATU-" + Date.now().toString().slice(-5);
+  const autoInv = isEdit ? invoiceToEdit.invoiceNumber : ("ATU-" + Date.now().toString().slice(-5));
 
   const html = `
     <div class="max-h-[85vh] overflow-y-auto pr-1 text-xs">
-      <h3 class="text-base font-bold text-white mb-2">नया टैक्सी बिल बनाएं</h3>
-      
-      <form id="form-create-bill" class="space-y-3">
-        <div class="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 space-y-2">
-          <span class="text-amber-400 font-bold block text-[10px] uppercase">1. ग्राहक व गाड़ी</span>
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="form-label">बिल नंबर</label>
-              <input type="text" id="mb-inv-num" class="form-input font-mono font-bold text-amber-400" value="${autoInv}" required>
-            </div>
-            <div>
-              <label class="form-label">तारीख</label>
-              <input type="date" id="mb-date" class="form-input font-mono" value="${today}" required>
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="form-label">ग्राहक / पार्टी का नाम *</label>
-              <input type="text" id="mb-cust-name" class="form-input font-bold" placeholder="पार्टी का नाम" required autofocus>
-            </div>
-            <div>
-              <label class="form-label">मोबाइल नंबर</label>
-              <input type="tel" id="mb-cust-phone" class="form-input font-mono" placeholder="9876543210">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="form-label">गाड़ी नंबर</label>
-              <input type="text" id="mb-veh-num" class="form-input font-mono uppercase" placeholder="RJ27 TA 1234">
-            </div>
-            <div>
-              <label class="form-label">रूट / विवरण</label>
-              <input type="text" id="mb-route" class="form-input" placeholder="उदा. Udaipur Local / Kumbhalgarh">
-            </div>
-          </div>
-        </div>
-
-        <div class="bg-slate-950/50 p-2.5 rounded-xl border border-slate-800 space-y-2">
-          <span class="text-amber-400 font-bold block text-[10px] uppercase">2. दिन व मीटर गणना</span>
-          <div class="grid grid-cols-3 gap-2">
-            <div>
-              <label class="form-label">कुल दिन (Days)</label>
-              <input type="number" id="mb-days" class="form-input font-mono text-center font-bold text-amber-400" value="1" min="1">
-            </div>
-            <div>
-              <label class="form-label">बिलिंग KM</label>
-              <input type="number" id="mb-km" class="form-input font-mono text-center font-bold text-emerald-400" value="250">
-            </div>
-            <div>
-              <label class="form-label">दर / KM (₹)</label>
-              <input type="number" id="mb-rate" class="form-input font-mono text-center font-bold" value="12">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="form-label">गाड़ी किराया (₹)</label>
-              <input type="number" id="mb-fare" class="form-input font-mono font-bold text-white" value="3000">
-            </div>
-            <div>
-              <label class="form-label">ड्राइवर भत्ता (₹)</label>
-              <input type="number" id="mb-bhatta" class="form-input font-mono" value="300">
-            </div>
-          </div>
-
-          <div class="grid grid-cols-2 gap-2">
-            <div>
-              <label class="form-label">टोल + पार्किंग (₹)</label>
-              <input type="number" id="mb-toll" class="form-input font-mono" value="0">
-            </div>
-            <div class="flex items-center pt-4">
-              <label class="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" id="mb-gst-toggle" class="rounded bg-slate-900 border-slate-700 text-amber-500">
-                <span class="text-[11px] font-bold text-slate-300">+5% GST बिल</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Total Box -->
-        <div class="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl space-y-1.5">
-          <div class="flex justify-between items-center text-xs">
-            <span class="text-slate-300 font-bold">कुल बिल (Grand Total):</span>
-            <span id="mb-disp-total" class="font-mono font-black text-amber-400 text-base">₹3,300</span>
-          </div>
-          <div class="grid grid-cols-2 gap-2 pt-1 border-t border-amber-500/20">
-            <div>
-              <label class="form-label">जमा एडवांस (₹)</label>
-              <input type="number" id="mb-advance" class="form-input font-mono font-bold text-emerald-400" value="0">
-            </div>
-            <div>
-              <label class="form-label">बाकी (Balance Due)</label>
-              <div id="mb-disp-bal" class="font-mono font-black text-rose-400 text-base pt-1">₹3,300</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="flex gap-2 pt-1">
-          <button type="submit" class="btn btn-primary flex-1 py-2 font-bold">बिल सुरक्षित करें</button>
-          <button type="button" id="mb-btn-cancel" class="btn btn-secondary py-2">रद्द करें</button>
-        </div>
-      </form>
-    </div>
-  `;
-
-  openModal(html);
-
-  const daysIn = document.getElementById("mb-days");
-  const kmIn = document.getElementById("mb-km");
-  const rateIn = document.getElementById("mb-rate");
-  const fareIn = document.getElementById("mb-fare");
-  const bhattaIn = document.getElementById("mb-bhatta");
-  const tollIn = document.getElementById("mb-toll");
-  const gstCheck = document.getElementById("mb-gst-toggle");
-  const advIn = document.getElementById("mb-advance");
-  const dispTot = document.getElementById("mb-disp-total");
-  const dispBal = document.getElementById("mb-disp-bal");
-
-  const calc = (updateFare = false) => {
-    const days = Math.max(1, Number(daysIn.value) || 1);
-    if (updateFare) {
-      const km = Number(kmIn.value) || 0;
-      const rate = Number(rateIn.value) || 0;
-      fareIn.value = km * rate;
-      bhattaIn.value = days * 300;
-    }
-    const fare = Number(fareIn.value) || 0;
-    const bhatta = Number(bhattaIn.value) || 0;
-    const toll = Number(tollIn.value) || 0;
-    let sub = fare + bhatta + toll;
-    if (gstCheck.checked) sub = Math.round(sub * 1.05);
-
-    dispTot.textContent = `₹${sub.toLocaleString('en-IN')}`;
-    const adv = Number(advIn.value) || 0;
-    const bal = Math.max(0, sub - adv);
-    dispBal.textContent = `₹${bal.toLocaleString('en-IN')}`;
-  };
-
-  [daysIn, kmIn, rateIn].forEach(el => el.addEventListener("input", () => calc(true)));
-  [fareIn, bhattaIn, tollIn, advIn].forEach(el => el.addEventListener("input", () => calc(false)));
-  gstCheck.addEventListener("change", () => calc(false));
-
-  document.getElementById("mb-btn-cancel")?.addEventListener("click", closeModal);
-
-  document.getElementById("form-create-bill")?.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const invNum = document.getElementById("mb-inv-num").value.trim();
-    const invDate = document.getElementById("mb-date").value;
-    const custName = document.getElementById("mb-cust-name").value.trim();
-    const custPhone = document.getElementById("mb-cust-phone").value.trim();
-    const vehNum = document.getElementById("mb-veh-num").value.trim();
-    const route = document.getElementById("mb-route").value.trim();
-
-    const days = Number(daysIn.value) || 1;
-    const km = Number(kmIn.value) || 0;
-    const rate = Number(rateIn.value) || 0;
-    const fare = Number(fareIn.value) || 0;
-    const bhatta = Number(bhattaIn.value) || 0;
-    const toll = Number(tollIn.value) || 0;
-    const isGst = gstCheck.checked;
-    let total = fare + bhatta + toll;
-    if (isGst) total = Math.round(total * 1.05);
-    const advance = Number(advIn.value) || 0;
-    const balance = Math.max(0, total - advance);
-
-    const docData = {
-      invoiceNumber: invNum,
-      invoiceDate: invDate,
-      customerName: custName,
-      customerPhone: custPhone,
-      vehicleNumber: vehNum,
-      pickupLocation: route || "Local",
-      totalDays: days,
-      totalKm: km,
-      ratePerKm: rate,
-      totalAmount: total,
-      advancePaid: advance,
-      balanceDue: balance,
-      isGstInvoice: isGst,
-      paymentStatus: balance <= 0 ? "PAID" : "DUE",
-      createdAt: new Date().toISOString()
-    };
-
-    try {
-      await setDoc(doc(db, "invoices", invNum), docData);
-      alert(`बिल #${invNum} सफलतापूर्वक बन गया!`);
-      closeModal();
-      renderBillingView(containerEl, onNavigate);
-    } catch (err) {
-      alert("एरर: " + err.message);
-    }
-  });
-}
+      <h3 class="text-base font-bold text-white mb-2">${isEdit ? 'बिल विवरण एडिट करें'
