@@ -1,340 +1,155 @@
 // js/views/billing-view.js
-// Aadesh Tours Udaipur - Compact, Crash-Proof Billing with Logo & Red Billbook PDF
+// Aadesh Tours Udaipur - Red Billbook Invoice & PDF Generator
 
-import { db } from "../config/firebase-config.js";
-import { 
-  collection, doc, setDoc, getDocs, deleteDoc, query, orderBy 
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+window.BillingView = {
+    render: function(containerId, billData = null) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
 
-function getBiz() {
-  try {
-    const raw = localStorage.getItem("aadesh_master_settings") || localStorage.getItem("aadesh_business_profile");
-    if (raw) return JSON.parse(raw);
-  } catch (e) {}
-  return {
-    businessName: "AADESH TOURS",
-    sub: "— UDAIPUR —",
-    address: "Sec. 14, Balicha, Udaipur, (Raj.) 313001",
-    phone: "9602842390",
-    altPhone: "7043195007",
-    email: "chetannathsisodiya500@gmail.com",
-    tagline: "All Type Of Taxi Tourist Cars (a.c. And Non A.c.) 24 Hours Available",
-    accountHolder: "CHETAN NATH",
-    bankName: "State Bank of India",
-    accountNo: "44936542535",
-    ifsc: "SBIN0016178",
-    upiId: "9602842390@upi",
-    logoUrl: ""
-  };
-}
+        // Settings / Profile se exact data uthana (Never undefined)
+        const settings = JSON.parse(localStorage.getItem('aadesh_settings') || '{}');
+        const companyName = settings.companyName || "AADESH TOURS UDAIPUR";
+        const phones = settings.phones || "9602842390 / 7043195007";
+        const bankName = "State Bank of India (SBI)";
+        const accountHolder = "Chetan Nath";
+        const accountNumber = "44936542535";
+        const ifscCode = "SBIN0016178";
 
-export async function renderBillingView(containerEl, onNavigate) {
-  let invoices = [];
-  try {
-    const q = query(collection(db, "invoices"), orderBy("createdAt", "desc"));
-    const snap = await getDocs(q);
-    invoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  } catch (e) {
-    try {
-      const snap = await getDocs(collection(db, "invoices"));
-      invoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } catch (err) { invoices = []; }
-  }
+        // Agar billData nahi hai, toh localstorage se aakhri bill uthao ya blank rakho
+        if (!billData) {
+            const trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
+            billData = trips.length > 0 ? trips[0] : {
+                slipNo: 'ATU-' + Math.floor(1000 + Math.random() * 9000),
+                date: new Date().toISOString().split('T')[0],
+                party: 'Keval Party',
+                vehicle: 'RJ-27-PA-0000',
+                mode: 'outstation',
+                kmRun: 0,
+                totalAmount: 0,
+                toll: 0,
+                parking: 0,
+                border: 0,
+                grandTotal: 0,
+                advance: 0,
+                balanceDue: 0,
+                isTax: false
+            };
+        }
 
-  const totBilled = invoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
-  const totDue = invoices.reduce((s, i) => s + (Number(i.balanceDue) || 0), 0);
-  const totCol = totBilled - totDue;
+        container.innerHTML = `
+            <div class="max-w-4xl mx-auto p-4 sm:p-6 text-slate-100">
+                <!-- Top Action Bar -->
+                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 bg-slate-900 p-4 rounded-2xl border border-slate-800 shadow-lg print:hidden">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <span>🧾</span> Red Billbook Invoice / Tax Bill
+                        </h2>
+                        <p class="text-xs text-slate-400 mt-0.5">Professional Invoice ready for download or WhatsApp share</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="window.print()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1.5 transition">
+                            <span>📥</span> PDF Download
+                        </button>
+                        <button onclick="BillingView.shareWhatsApp('${billData.slipNo}', '${billData.party}', '${billData.grandTotal}', '${billData.balanceDue}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl text-sm flex items-center gap-1.5 transition">
+                            <span>📲</span> WhatsApp Share
+                        </button>
+                    </div>
+                </div>
 
-  let cards = invoices.length === 0 
-    ? '<div class="vault-card text-center p-6 text-slate-500 text-xs">Koi bill nahi mila. "+ Naya Bill" par click karein.</div>'
-    : invoices.map(inv => {
-        const isDue = Number(inv.balanceDue) > 0;
-        const col = isDue ? "border-l-rose-500" : "border-l-emerald-500";
-        const st = isDue ? '<span class="badge-status badge-danger">DUE</span>' : '<span class="badge-status badge-active">PAID</span>';
-        return `
-          <div class="vault-card space-y-2 border-l-4 ${col} text-xs">
-            <div class="flex justify-between items-center font-mono">
-              <span class="font-bold text-white">#${inv.invoiceNumber} ${st}</span>
-              <span class="text-slate-400 text-[11px]">${inv.invoiceDate || ''}</span>
+                <!-- Printable Red Border Billbook Box -->
+                <div id="invoice-print-area" class="bg-white text-slate-900 p-6 sm:p-8 rounded-2xl shadow-2xl border-4 border-red-700 font-sans">
+                    <!-- Header -->
+                    <div class="text-center border-b-2 border-red-700 pb-4 mb-4">
+                        <h1 class="text-3xl font-extrabold tracking-wider text-red-700 uppercase">${companyName}</h1>
+                        <p class="text-xs font-bold text-slate-700 mt-1">Taxi Service, Outstation Tour & Corporate Cab Provider</p>
+                        <p class="text-sm font-bold text-slate-900 mt-1">Contact: ${phones}</p>
+                    </div>
+
+                    <!-- Bill Meta Details -->
+                    <div class="grid grid-cols-2 gap-4 text-sm mb-4 border-b border-slate-300 pb-4">
+                        <div>
+                            <p class="font-semibold text-slate-600">Bill No: <span class="font-bold text-slate-900">${billData.slipNo}</span> ${billData.isTax ? '<span class="bg-red-700 text-white text-[10px] px-1.5 py-0.5 rounded ml-1">GST TAX INVOICE</span>' : ''}</p>
+                            <p class="font-semibold text-slate-600 mt-1">Party Name: <span class="font-bold text-slate-900">${billData.party}</span></p>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-semibold text-slate-600">Date: <span class="font-bold text-slate-900">${billData.date}</span></p>
+                            <p class="font-semibold text-slate-600 mt-1">Vehicle No: <span class="font-bold text-slate-900">${billData.vehicle}</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Particulars Table -->
+                    <div class="overflow-x-auto mb-6">
+                        <table class="w-full border-collapse border border-slate-400 text-sm">
+                            <thead>
+                                <tr class="bg-red-700 text-white">
+                                    <th class="border border-slate-400 p-2 text-left">Particulars / Description</th>
+                                    <th class="border border-slate-400 p-2 text-center">Billing Mode</th>
+                                    <th class="border border-slate-400 p-2 text-right">Amount (₹)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="border border-slate-400 p-2.5 font-medium">
+                                        Taxi Rental Charges (${billData.mode.toUpperCase()})
+                                        ${billData.kmRun > 0 ? '<br><span class="text-xs text-slate-500">Total KM Run: ' + billData.kmRun + ' KM</span>' : ''}
+                                    </td>
+                                    <td class="border border-slate-400 p-2.5 text-center uppercase text-xs font-bold text-slate-700">${billData.mode}</td>
+                                    <td class="border border-slate-400 p-2.5 text-right font-bold">₹${billData.totalAmount}</td>
+                                </tr>
+                                ${billData.toll > 0 ? `<tr><td colspan="2" class="border border-slate-400 p-2">Toll Tax</td><td class="border border-slate-400 p-2 text-right">₹${billData.toll}</td></tr>` : ''}
+                                ${billData.parking > 0 ? `<tr><td colspan="2" class="border border-slate-400 p-2">Parking Charges</td><td class="border border-slate-400 p-2 text-right">₹${billData.parking}</td></tr>` : ''}
+                                ${billData.border > 0 ? `<tr><td colspan="2" class="border border-slate-400 p-2">Border Tax</td><td class="border border-slate-400 p-2 text-right">₹${billData.border}</td></tr>` : ''}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Totals & Balance Summary -->
+                    <div class="flex justify-end mb-6">
+                        <div class="w-full sm:w-72 space-y-2 text-sm border-t-2 border-slate-900 pt-3">
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-slate-600">Grand Total:</span>
+                                <span class="text-slate-900 font-bold text-base">₹${billData.grandTotal}</span>
+                            </div>
+                            <div class="flex justify-between font-semibold">
+                                <span class="text-slate-600">Advance Paid:</span>
+                                <span class="text-emerald-700 font-bold">- ₹${billData.advance}</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-base pt-2 border-t border-slate-300">
+                                <span class="text-red-700">Balance Due (Baki):</span>
+                                <span class="${billData.balanceDue > 0 ? 'text-red-600' : 'text-emerald-600'}">₹${billData.balanceDue}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bank Details Box (Chetan Nath & SBI - No Undefined) -->
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-300 text-xs text-slate-800 mb-6">
+                        <h4 class="font-bold text-red-700 mb-1 uppercase tracking-wide">Bank Details for Online Payment / UPI:</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                            <p><strong>Account Holder:</strong> ${accountHolder}</p>
+                            <p><strong>Bank Name:</strong> ${bankName}</p>
+                            <p><strong>Account Number:</strong> <span class="font-mono font-bold">${accountNumber}</span></p>
+                            <p><strong>IFSC Code:</strong> <span class="font-mono font-bold">${ifscCode}</span></p>
+                        </div>
+                    </div>
+
+                    <!-- Footer Signature -->
+                    <div class="flex justify-between items-end pt-4 border-t border-slate-300 text-xs text-slate-700">
+                        <div>
+                            <p class="font-semibold">Thank you for traveling with ${companyName}!</p>
+                            <p class="mt-0.5 text-slate-500">Subject to Udaipur Jurisdiction.</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="h-10 border-b border-slate-400 w-36 mb-1"></div>
+                            <span class="font-bold">Authorised Signatory</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="bg-slate-950/60 p-2 rounded-xl grid grid-cols-2 gap-2 text-[11px] border border-slate-800">
-              <div><span class="text-slate-400 block text-[10px]">Party:</span><strong class="text-white">${inv.customerName}</strong><span class="text-slate-400 block font-mono">${inv.customerPhone || '-'}</span></div>
-              <div><span class="text-slate-400 block text-[10px]">Gaadi / Route:</span><strong class="text-amber-400 font-mono">${inv.vehicleNumber || 'Cab'}</strong><span class="text-slate-300 block truncate">${inv.pickupLocation || 'Local'}</span></div>
-            </div>
-            <div class="flex justify-between font-mono bg-slate-900/60 p-1.5 rounded-lg text-[11px]">
-              <div>Total: <strong class="text-white">₹${(Number(inv.totalAmount)||0).toLocaleString('en-IN')}</strong></div>
-              <div>Jama: <strong class="text-emerald-400">₹${(Number(inv.advancePaid)||0).toLocaleString('en-IN')}</strong></div>
-              <div>Baki: <strong class="text-rose-400">₹${(Number(inv.balanceDue)||0).toLocaleString('en-IN')}</strong></div>
-            </div>
-            <div class="flex justify-between items-center pt-1 border-t border-slate-800 text-[11px]">
-              <div class="flex gap-1.5">
-                <button class="btn btn-secondary py-1 px-2.5 text-emerald-400 btn-wa" data-inv="${inv.invoiceNumber}">📲 WA</button>
-                <button class="btn btn-secondary py-1 px-2.5 text-amber-400 font-bold btn-print" data-inv="${inv.invoiceNumber}">🖨️ PDF Bill</button>
-              </div>
-              <div class="flex gap-1">
-                <button class="btn btn-secondary py-1 px-2 btn-edit" data-inv="${inv.invoiceNumber}">✏️</button>
-                <button class="btn btn-danger py-1 px-2 btn-del" data-inv="${inv.invoiceNumber}">🗑️</button>
-              </div>
-            </div>
-          </div>
         `;
-      }).join("");
+    },
 
-  containerEl.innerHTML = `
-    <div class="flex justify-between items-center gap-2">
-      <div>
-        <h2 class="text-lg font-black text-white">Billing & Invoices</h2>
-        <p class="text-xs text-slate-400">Kul Bill: <span class="font-mono text-amber-400 font-bold">${invoices.length}</span></p>
-      </div>
-      <button id="btn-add-bill" class="btn btn-primary text-xs py-2 px-3 font-bold shadow-lg">+ Naya Bill Banayein</button>
-    </div>
-    <div class="grid grid-cols-3 gap-2 text-center text-xs">
-      <div class="stat-metric p-2"><div class="stat-label text-[10px]">Total Billing</div><div class="stat-value text-sm text-white">₹${totBilled.toLocaleString('en-IN')}</div></div>
-      <div class="stat-metric p-2"><div class="stat-label text-[10px]">Total Jama</div><div class="stat-value text-sm text-emerald-400">₹${totCol.toLocaleString('en-IN')}</div></div>
-      <div class="stat-metric p-2 border-rose-500/30"><div class="stat-label text-[10px] text-rose-400">Total Baki</div><div class="stat-value text-sm text-rose-400">₹${totDue.toLocaleString('en-IN')}</div></div>
-    </div>
-    <div class="space-y-3">${cards}</div>
-  `;
-
-  const modal = document.getElementById("modal-container");
-  const modalContent = document.getElementById("modal-content");
-  const openModal = (h) => { modalContent.innerHTML = h; modal.classList.remove("hidden"); };
-  const closeModal = () => { modal.classList.add("hidden"); modalContent.innerHTML = ""; };
-
-  document.getElementById("btn-add-bill")?.addEventListener("click", () => openBillModal(null, openModal, closeModal, containerEl, onNavigate));
-
-  containerEl.querySelectorAll(".btn-edit").forEach(b => {
-    b.onclick = () => {
-      const inv = invoices.find(i => i.invoiceNumber === b.dataset.inv);
-      if (inv) openBillModal(inv, openModal, closeModal, containerEl, onNavigate);
-    };
-  });
-
-  containerEl.querySelectorAll(".btn-del").forEach(b => {
-    b.onclick = async () => {
-      const num = b.dataset.inv;
-      if (confirm(`Kya aap bill #${num} delete karna chahte hain?`)) {
-        await deleteDoc(doc(db, "invoices", num));
-        renderBillingView(containerEl, onNavigate);
-      }
-    };
-  });
-
-  containerEl.querySelectorAll(".btn-wa").forEach(b => {
-    b.onclick = () => {
-      const inv = invoices.find(i => i.invoiceNumber === b.dataset.inv);
-      if (!inv) return;
-      const biz = getBiz();
-      const msg = `*${biz.businessName}*\nBill #${inv.invoiceNumber}\nParty: *${inv.customerName}*\nGaadi: *${inv.vehicleNumber}*\nRoute: ${inv.pickupLocation || 'Local'}\nTotal: ₹${Number(inv.totalAmount||0).toLocaleString('en-IN')}\nJama: ₹${Number(inv.advancePaid||0).toLocaleString('en-IN')}\n*Baki: ₹${Number(inv.balanceDue||0).toLocaleString('en-IN')}*\nDhanyawad! Contact: ${biz.phone}`;
-      const num = (inv.customerPhone || '').replace(/\D/g, '');
-      window.open(`https://wa.me/${num ? ('91' + num) : ''}?text=${encodeURIComponent(msg)}`, "_blank");
-    };
-  });
-
-  containerEl.querySelectorAll(".btn-print").forEach(b => {
-    b.onclick = () => {
-      const inv = invoices.find(i => i.invoiceNumber === b.dataset.inv);
-      if (inv) printRedBill(inv);
-    };
-  });
-}
-
-function printRedBill(inv) {
-  const biz = getBiz();
-  const w = window.open("", "_blank");
-  if (!w) { alert("Popup allow karein"); return; }
-  const f = Number(inv.vehicleFare) || Number(inv.totalAmount) || 0;
-  const t = Number(inv.tollCharges) || 0;
-  const n = Number(inv.driverBhatta) || 0;
-  const tot = Number(inv.totalAmount) || 0;
-  const adv = Number(inv.advancePaid) || 0;
-  const bal = Number(inv.balanceDue) || 0;
-
-  const logoHtml = biz.logoUrl ? `<img src="${biz.logoUrl}" style="max-height: 60px; max-width: 90px; object-fit: contain; margin-bottom: 4px;">` : '';
-
-  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bill #${inv.invoiceNumber}</title>
-  <style>
-    @page { size: A4 portrait; margin: 8mm; }
-    body { font-family: Arial, sans-serif; background: #fff; margin: 0; padding: 10px; color: #111; }
-    .btn-bar { text-align: center; margin-bottom: 12px; }
-    .pbtn { background: #b91c1c; color: #fff; border: none; padding: 8px 20px; font-size: 14px; font-weight: bold; border-radius: 6px; cursor: pointer; }
-    .box { max-width: 720px; margin: auto; border: 3px double #b91c1c; padding: 14px 18px; }
-    .top-tag { text-align: center; margin-top: -6px; }
-    .top-tag span { border: 1px solid #b91c1c; color: #b91c1c; font-size: 10px; font-weight: bold; padding: 1px 12px; border-radius: 10px; }
-    .head { text-align: center; border-bottom: 1.5px solid #b91c1c; padding-bottom: 6px; margin-bottom: 8px; }
-    .h1 { font-size: 28px; font-weight: 900; color: #b91c1c; margin: 2px 0 0 0; }
-    .h2 { font-size: 14px; font-weight: bold; color: #b91c1c; letter-spacing: 3px; margin: 2px 0; }
-    .addr { font-size: 11px; font-weight: bold; color: #334155; }
-    .mob { font-size: 11px; font-weight: bold; color: #b91c1c; margin: 2px 0; }
-    .tag { font-size: 10.5px; font-weight: bold; color: #b91c1c; border-top: 1px dashed #fca5a5; padding-top: 2px; }
-    .meta { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; }
-    .dot { border-bottom: 1px dotted #475569; font-weight: bold; display: inline-block; padding: 0 4px; }
-    table { width: 100%; border-collapse: collapse; border: 1.5px solid #b91c1c; font-size: 12px; }
-    th { border: 1.5px solid #b91c1c; color: #b91c1c; padding: 5px; font-size: 11px; }
-    td { border-left: 1.5px solid #b91c1c; border-right: 1.5px solid #b91c1c; padding: 6px; vertical-align: top; }
-    .r { text-align: right; } .c { text-align: center; }
-    .crow td { border: 1.5px solid #b91c1c; padding: 4px 6px; font-weight: bold; }
-    .clbl { color: #b91c1c; font-size: 11px; }
-    .bank { border: 1px solid #b91c1c; padding: 4px 8px; font-size: 10px; background: #fffaf0; border-radius: 4px; line-height: 1.5; }
-    .terms { font-size: 9.5px; color: #334155; line-height: 1.4; margin-top: 4px; }
-    .sign { display: flex; justify-content: space-between; margin-top: 24px; font-size: 11px; font-weight: bold; }
-    @media print { .btn-bar { display: none; } body { padding: 0; } }
-  </style></head><body>
-  <div class="btn-bar"><button class="pbtn" onclick="window.print()">📥 Download PDF / Print</button></div>
-  <div class="box">
-    <div class="top-tag"><span>INVOICE</span></div>
-    <div class="head">
-      ${logoHtml}
-      <div class="h1">${biz.businessName}</div>
-      <div class="h2">${biz.sub || '— UDAIPUR —'}</div>
-      <div class="addr">${biz.address}</div>
-      <div class="mob">Mob. ${biz.phone}${biz.altPhone ? ', ' + biz.altPhone : ''} | ${biz.email || ''}</div>
-      <div class="tag">${biz.tagline || ''}</div>
-    </div>
-    <div class="meta">
-      <div>M/s. <span class="dot" style="min-width:200px;">${inv.customerName}</span><br>Vehicle No. <span class="dot" style="min-width:160px; text-transform:uppercase;">${inv.vehicleNumber||'Cab'}</span></div>
-      <div class="r">Bill No. <span class="dot" style="color:#b91c1c; min-width:70px;">${inv.invoiceNumber}</span><br>Date : <span class="dot" style="min-width:80px;">${inv.invoiceDate||''}</span></div>
-    </div>
-    <table>
-      <thead><tr><th style="width:50%;">PARTICULAR</th><th class="c" style="width:16%;">RATE</th><th class="c" style="width:16%;">TOTAL K.M.</th><th class="r" style="width:18%;">AMOUNT</th></tr></thead>
-      <tbody>
-        <tr style="height:110px;">
-          <td><strong style="font-size:13px;">${inv.pickupLocation||'Local Tour'}</strong><div style="color:#64748b; font-size:10px; margin-top:3px;">Vehicle: ${inv.vehicleNumber||'Cab'} (${inv.totalDays||1} Day)</div></td>
-          <td class="c">₹${inv.ratePerKm||'-'}</td>
-          <td class="c">${inv.totalKm||'-'}</td>
-          <td class="r font-bold">₹${f.toLocaleString('en-IN')}</td>
-        </tr>
-        <tr class="crow">
-          <td colspan="2" rowspan="5" style="vertical-align:top; border:1.5px solid #b91c1c;">
-            <div class="bank">
-              <strong style="color:#b91c1c; font-size:9.5px;">Bank Details:</strong><br>
-              <strong>Name:</strong> ${biz.accountHolder} | <strong>Bank:</strong> ${biz.bankName}<br>
-              <strong>A/C:</strong> ${biz.accountNo} | <strong>IFSC:</strong> ${biz.ifsc}<br>
-              <strong>UPI ID:</strong> ${biz.upiId}
-            </div>
-            <div style="font-size:10px; margin-top:6px;"><strong>Rupees:</strong> <span class="dot">₹${tot.toLocaleString('en-IN')} Only</span></div>
-          </td>
-          <td class="clbl">TOLL/PARK.</td><td class="r">${t ? ('₹' + t.toLocaleString('en-IN')) : '-'}</td>
-        </tr>
-        <tr class="crow"><td class="clbl">NIGHT CH.</td><td class="r">${n ? ('₹' + n.toLocaleString('en-IN')) : '-'}</td></tr>
-        <tr class="crow"><td class="clbl">TOTAL</td><td class="r">₹${tot.toLocaleString('en-IN')}</td></tr>
-        <tr class="crow"><td class="clbl" style="color:#15803d;">ADVANCE</td><td class="r" style="color:#15803d;">₹${adv.toLocaleString('en-IN')}</td></tr>
-        <tr class="crow" style="background:#fef2f2;"><td class="clbl" style="color:#b91c1c; font-size:12px;">G.TOTAL / DUE</td><td class="r" style="color:#b91c1c; font-size:14px;">₹${(bal > 0 ? bal : tot).toLocaleString('en-IN')}</td></tr>
-      </tbody>
-    </table>
-    <div class="terms">
-      • Toll Tax, Border Tax, Parking, No Entry Charges pay by party.<br>
-      • Night Charges / Driver Allowance Rs.300/- Extra.<br>
-      • Per day Running 300 k.m. | All Subject To Udaipur Jurisdiction Only. | E.&O.E.
-    </div>
-    <div class="sign">
-      <div style="border-top:1px dashed #64748b; padding-top:4px; width:120px; text-align:center;">Customer's Sig.</div>
-      <div style="color:#b91c1c; text-align:center;"><br><span style="border-top:1px solid #b91c1c; padding-top:2px;">For: ${biz.businessName}</span></div>
-    </div>
-  </div>
-  <script>setTimeout(function(){window.print();},400);</script>
-  </body></html>`);
-  w.document.close();
-}
-
-function openBillModal(inv, openModal, closeModal, containerEl, onNavigate) {
-  const isEdit = !!inv;
-  const today = new Date().toISOString().slice(0, 10);
-  const autoNo = isEdit ? inv.invoiceNumber : ("ATU-" + Date.now().toString().slice(-4));
-
-  openModal(`
-    <h3 class="text-sm font-bold text-white mb-2">${isEdit ? 'Bill Edit Karein' : 'Naya Bill Banayein'}</h3>
-    <form id="f-bill" class="space-y-2.5 text-xs">
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="form-label">Bill No</label><input type="text" id="b-num" class="form-input font-mono font-bold text-amber-400" value="${autoNo}" readonly></div>
-        <div><label class="form-label">Date</label><input type="date" id="b-date" class="form-input font-mono" value="${isEdit ? inv.invoiceDate : today}" required></div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="form-label">Party Name (M/s) *</label><input type="text" id="b-name" class="form-input font-bold" placeholder="Party Name" value="${isEdit ? inv.customerName : ''}" required></div>
-        <div><label class="form-label">Phone</label><input type="tel" id="b-phone" class="form-input font-mono" placeholder="9876543210" value="${isEdit ? (inv.customerPhone||'') : ''}"></div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="form-label">Vehicle No</label><input type="text" id="b-veh" class="form-input font-mono uppercase font-bold" placeholder="RJ27 TA 9869" value="${isEdit ? (inv.vehicleNumber||'') : ''}"></div>
-        <div><label class="form-label">Particular / Route</label><input type="text" id="b-route" class="form-input" placeholder="Route details" value="${isEdit ? (inv.pickupLocation||'') : ''}"></div>
-      </div>
-      <div class="grid grid-cols-3 gap-2">
-        <div><label class="form-label">Days</label><input type="number" id="b-days" class="form-input font-mono text-center font-bold" value="${isEdit ? (inv.totalDays||1) : 1}"></div>
-        <div><label class="form-label">Total KM</label><input type="number" id="b-km" class="form-input font-mono text-center" value="${isEdit ? (inv.totalKm||250) : 250}"></div>
-        <div><label class="form-label">Rate / KM</label><input type="number" id="b-rate" class="form-input font-mono text-center" value="${isEdit ? (inv.ratePerKm||12) : 12}"></div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="form-label">Fare (₹)</label><input type="number" id="b-fare" class="form-input font-mono font-bold text-white" value="${isEdit ? (inv.vehicleFare||3000) : 3000}"></div>
-        <div><label class="form-label">Night / Bhatta (₹)</label><input type="number" id="b-bhatta" class="form-input font-mono" value="${isEdit ? (inv.driverBhatta||300) : 300}"></div>
-      </div>
-      <div class="grid grid-cols-2 gap-2">
-        <div><label class="form-label">Toll / Parking (₹)</label><input type="number" id="b-toll" class="form-input font-mono" value="${isEdit ? (inv.tollCharges||0) : 0}"></div>
-        <div><label class="form-label">Advance Jama (₹)</label><input type="number" id="b-adv" class="form-input font-mono font-bold text-emerald-400" value="${isEdit ? (inv.advancePaid||0) : 0}"></div>
-      </div>
-      <div class="bg-amber-500/10 p-2 rounded-lg border border-amber-500/30 flex justify-between font-mono font-bold text-xs">
-        <span>Total: <span id="b-tot-disp" class="text-amber-400">₹3,300</span></span>
-        <span>Due: <span id="b-bal-disp" class="text-rose-400">₹3,300</span></span>
-      </div>
-      <div class="flex gap-2 pt-1">
-        <button type="submit" class="btn btn-primary flex-1 py-2 font-bold shadow-md">${isEdit ? 'Update Karein' : 'Bill Banayein'}</button>
-        <button type="button" id="b-close" class="btn btn-secondary py-2">Radd</button>
-      </div>
-    </form>
-  `);
-
-  const dIn = document.getElementById("b-days");
-  const kIn = document.getElementById("b-km");
-  const rIn = document.getElementById("b-rate");
-  const fIn = document.getElementById("b-fare");
-  const bhIn = document.getElementById("b-bhatta");
-  const tIn = document.getElementById("b-toll");
-  const aIn = document.getElementById("b-adv");
-  const totD = document.getElementById("b-tot-disp");
-  const balD = document.getElementById("b-bal-disp");
-
-  const calc = (updateFare = false) => {
-    if (updateFare) {
-      fIn.value = (Number(kIn.value)||0) * (Number(rIn.value)||0);
-      bhIn.value = (Number(dIn.value)||1) * 300;
+    shareWhatsApp: function(slipNo, party, grandTotal, balanceDue) {
+        const text = `*AADESH TOURS UDAIPUR - TAX INVOICE*%0A*Bill No:* ${slipNo}%0A*Party:* ${party}%0A*Grand Total:* ₹${grandTotal}%0A*Balance Due:* ₹${balanceDue}%0A*Bank:* SBI A/C 44936542535 (Chetan Nath)%0A*IFSC:* SBIN0016178%0A%0AThank you for your business!`;
+        window.open(`https://wa.me/?text=${text}`, '_blank');
     }
-    const tot = (Number(fIn.value)||0) + (Number(bhIn.value)||0) + (Number(tIn.value)||0);
-    const bal = Math.max(0, tot - (Number(aIn.value)||0));
-    totD.textContent = "₹" + tot.toLocaleString('en-IN');
-    balD.textContent = "₹" + bal.toLocaleString('en-IN');
-  };
-
-  [dIn, kIn, rIn].forEach(el => el.oninput = () => calc(true));
-  [fIn, bhIn, tIn, aIn].forEach(el => el.oninput = () => calc(false));
-  calc(false);
-
-  document.getElementById("b-close").onclick = closeModal;
-
-  document.getElementById("f-bill").onsubmit = async (e) => {
-    e.preventDefault();
-    const tot = (Number(fIn.value)||0) + (Number(bhIn.value)||0) + (Number(tIn.value)||0);
-    const adv = Number(aIn.value) || 0;
-    const bal = Math.max(0, tot - adv);
-
-    await setDoc(doc(db, "invoices", autoNo), {
-      invoiceNumber: autoNo,
-      invoiceDate: document.getElementById("b-date").value,
-      customerName: document.getElementById("b-name").value.trim(),
-      customerPhone: document.getElementById("b-phone").value.trim(),
-      vehicleNumber: document.getElementById("b-veh").value.trim().toUpperCase(),
-      pickupLocation: document.getElementById("b-route").value.trim(),
-      totalDays: Number(dIn.value) || 1,
-      totalKm: Number(kIn.value) || 0,
-      ratePerKm: Number(rIn.value) || 0,
-      vehicleFare: Number(fIn.value) || 0,
-      driverBhatta: Number(bhIn.value) || 0,
-      tollCharges: Number(tIn.value) || 0,
-      totalAmount: tot,
-      advancePaid: adv,
-      balanceDue: bal,
-      createdAt: isEdit ? (inv.createdAt || new Date().toISOString()) : new Date().toISOString()
-    }, { merge: true });
-
-    alert(`Bill #${autoNo} successfully save ho gaya!`);
-    closeModal();
-    renderBillingView(containerEl, onNavigate);
-  };
-}
+};
