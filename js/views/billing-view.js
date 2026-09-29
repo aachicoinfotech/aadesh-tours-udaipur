@@ -1,12 +1,22 @@
 // js/views/billing-view.js
-// Aadesh Tours Udaipur - Billing & Customer Ledger Controller (Phase 29 - Clean Fix)
+// Aadesh Tours Udaipur - Complete Billing, Direct Invoice & Ledger Controller (Phase 29 Master)
 
-import { getAllInvoices, recordInvoicePayment } from "../services/invoice-service.js";
-import { getAllCustomers } from "../services/customer-service.js";
+import * as invoiceService from "../services/invoice-service.js";
+import * as customerService from "../services/customer-service.js";
+import * as fleetService from "../services/fleet-service.js";
 import { addGallaTransaction } from "../services/galla-service.js";
 import { CASHFLOW_CATEGORIES } from "../config/constants.js";
 import { exportInvoiceToPdf } from "../exporters/pdf-exporter.js";
 import { printThermalReceipt } from "../exporters/data-exporter.js";
+import { db } from "../config/firebase-config.js";
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDocs, 
+  query, 
+  orderBy 
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 /**
  * 1. Render Complete Invoicing & Party Ledger View
@@ -14,10 +24,38 @@ import { printThermalReceipt } from "../exporters/data-exporter.js";
  * @param {Function} onNavigate - Tab navigation callback
  */
 export async function renderBillingView(containerEl, onNavigate) {
-  const [invoices, customers] = await Promise.all([
-    getAllInvoices(),
-    getAllCustomers()
-  ]);
+  // Safe fetch of invoices, customers, and fleet
+  let invoices = [];
+  try {
+    if (typeof invoiceService.getAllInvoices === "function") {
+      invoices = await invoiceService.getAllInvoices();
+    } else {
+      const q = query(collection(db, "invoices"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      invoices = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    }
+  } catch (err) {
+    console.warn("Error fetching invoices:", err);
+    invoices = [];
+  }
+
+  let customers = [];
+  try {
+    if (typeof customerService.getAllCustomers === "function") {
+      customers = await customerService.getAllCustomers();
+    }
+  } catch (err) {
+    customers = [];
+  }
+
+  let vehicles = [];
+  try {
+    if (typeof fleetService.getAllVehicles === "function") {
+      vehicles = await fleetService.getAllVehicles();
+    }
+  } catch (err) {
+    vehicles = [];
+  }
 
   let activeFilter = "ALL";
   let searchQuery = "";
@@ -56,6 +94,9 @@ export async function renderBillingView(containerEl, onNavigate) {
           <h2 class="text-xl font-black text-white tracking-wide">बिलिंग व पार्टी लेजर</h2>
           <p class="text-xs text-slate-400">कुल इनवॉइस: <span class="font-mono text-amber-400 font-bold">${invoices.length}</span></p>
         </div>
+        <button id="btn-create-direct-bill" class="btn btn-primary text-xs sm:text-sm py-2 px-3">
+          + नया डायरेक्ट बिल (New Invoice)
+        </button>
       </div>
 
       <div class="grid grid-cols-3 gap-3">
@@ -104,7 +145,7 @@ export async function renderBillingView(containerEl, onNavigate) {
 
   const renderInvoicesList = (list) => {
     if (list.length === 0) {
-      return '<div class="vault-card text-center p-8 text-slate-500 text-xs">कोई इनवॉइस रिकॉर्ड नहीं मिला।</div>';
+      return '<div class="vault-card text-center p-8 text-slate-500 text-xs">कोई इनवॉइस रिकॉर्ड नहीं मिला। ऊपर दिए गए बटन से नया बिल बनाएं।</div>';
     }
 
     const cardsHtml = list.map(inv => {
@@ -116,12 +157,13 @@ export async function renderBillingView(containerEl, onNavigate) {
       const typeBadge = inv.isGstInvoice ? "GST INVOICE" : "BILL OF SUPPLY";
       const typeBadgeColor = inv.isGstInvoice ? "badge-info" : "badge-warning";
       const custPhone = inv.customerPhone || "फोन नहीं";
-      const vehNum = inv.vehicleNumber || "टैक्सी";
-      const dropLoc = inv.dropLocation || "लोकल";
-      const billedKm = billing.billedKm || 0;
-      const days = billing.days || 1;
-      const ratePerKm = billing.ratePerKm || 0;
+      const vehNum = inv.vehicleNumber || inv.vehicleId || "टैक्सी";
+      const routeText = (inv.pickupLocation || "उदयपुर") + " ➔ " + (inv.dropLocation || "लोकल");
+      const billedKm = billing.billedKm || inv.totalKm || 0;
+      const days = billing.days || inv.totalDays || 1;
+      const ratePerKm = billing.ratePerKm || inv.ratePerKm || 0;
       const balColor = isUnpaid ? "text-rose-400" : "text-slate-400";
+      const slipInfo = inv.dutySlipNumber ? ("स्लिप #" + inv.dutySlipNumber) : "डायरेक्ट बिल";
 
       let payBtnHtml = "";
       if (isUnpaid) {
@@ -137,7 +179,7 @@ export async function renderBillingView(containerEl, onNavigate) {
               <span class="badge-status ${badgeColor}">${statusBadge}</span>
             </div>
             <div class="text-xs text-slate-400 font-mono">
-              ${inv.invoiceDate} (स्लिप #${inv.dutySlipNumber})
+              ${inv.invoiceDate || inv.date || "-"} (${slipInfo})
             </div>
           </div>
 
@@ -150,7 +192,7 @@ export async function renderBillingView(containerEl, onNavigate) {
             <div>
               <span class="text-slate-400 block text-[11px]">गाड़ी व रूट:</span>
               <span class="font-mono font-bold text-slate-200">${vehNum}</span>
-              <span class="text-slate-400 block">${inv.pickupLocation} ➔ ${dropLoc}</span>
+              <span class="text-slate-400 block">${routeText}</span>
             </div>
             <div>
               <span class="text-slate-400 block text-[11px]">किलोमीटर व दिन:</span>
@@ -162,15 +204,15 @@ export async function renderBillingView(containerEl, onNavigate) {
           <div class="flex flex-wrap items-center justify-between gap-3 text-xs px-1">
             <div>
               <span class="text-slate-400">कुल बिल:</span>
-              <span class="font-mono font-bold text-slate-100 text-sm">₹${inv.totalAmount}</span>
+              <span class="font-mono font-bold text-slate-100 text-sm">₹${(Number(inv.totalAmount) || 0).toLocaleString("en-IN")}</span>
             </div>
             <div>
               <span class="text-slate-400">जमा एडवांस:</span>
-              <span class="font-mono text-emerald-400">₹${inv.advancePaid}</span>
+              <span class="font-mono text-emerald-400">₹${(Number(inv.advancePaid) || 0).toLocaleString("en-IN")}</span>
             </div>
             <div>
               <span class="text-slate-400">बकाया राशि:</span>
-              <span class="font-mono font-black ${balColor} text-sm">₹${inv.balanceDue}</span>
+              <span class="font-mono font-black ${balColor} text-sm">₹${(Number(inv.balanceDue) || 0).toLocaleString("en-IN")}</span>
             </div>
           </div>
 
@@ -252,6 +294,14 @@ export async function renderBillingView(containerEl, onNavigate) {
       });
     });
 
+    // 1. OPEN DIRECT BILL MODAL
+    const btnDirectBill = containerEl.querySelector("#btn-create-direct-bill");
+    if (btnDirectBill) {
+      btnDirectBill.addEventListener("click", () => {
+        openDirectBillModal(openModal, closeModal, customers, vehicles, containerEl, onNavigate);
+      });
+    }
+
     const searchInput = containerEl.querySelector("#bill-search-input");
     if (searchInput) {
       searchInput.addEventListener("input", (e) => {
@@ -280,7 +330,9 @@ export async function renderBillingView(containerEl, onNavigate) {
         btn.addEventListener("click", () => {
           const invNum = btn.dataset.inv;
           const invoice = invoices.find(i => i.invoiceNumber === invNum);
-          if (invoice) exportInvoiceToPdf(invoice);
+          if (invoice && typeof exportInvoiceToPdf === "function") {
+            exportInvoiceToPdf(invoice);
+          }
         });
       });
 
@@ -288,7 +340,9 @@ export async function renderBillingView(containerEl, onNavigate) {
         btn.addEventListener("click", () => {
           const invNum = btn.dataset.inv;
           const invoice = invoices.find(i => i.invoiceNumber === invNum);
-          if (invoice) printThermalReceipt(invoice, 58);
+          if (invoice && typeof printThermalReceipt === "function") {
+            printThermalReceipt(invoice, 58);
+          }
         });
       });
 
@@ -339,7 +393,7 @@ export async function renderBillingView(containerEl, onNavigate) {
             </form>
           `);
 
-          document.getElementById("btn-cancel-pay").addEventListener("click", closeModal);
+          document.getElementById("btn-cancel-pay")?.addEventListener("click", closeModal);
           document.getElementById("form-record-pay").addEventListener("submit", async (e) => {
             e.preventDefault();
             const payAmt = Number(document.getElementById("pay-amount").value);
@@ -348,7 +402,20 @@ export async function renderBillingView(containerEl, onNavigate) {
 
             if (payAmt <= 0) return;
 
-            const res = await recordInvoicePayment(invNum, payAmt, payMode);
+            let res = { success: false };
+            if (typeof invoiceService.recordInvoicePayment === "function") {
+              res = await invoiceService.recordInvoicePayment(invNum, payAmt, payMode);
+            } else {
+              const invRef = doc(db, "invoices", invNum);
+              const newBal = Math.max(0, Number(invoice.balanceDue) - payAmt);
+              await setDoc(invRef, {
+                balanceDue: newBal,
+                paymentStatus: newBal <= 0 ? "PAID" : "PARTIAL",
+                paidAmount: (Number(invoice.paidAmount) || 0) + payAmt,
+                updatedAt: new Date().toISOString()
+              }, { merge: true });
+              res = { success: true };
+            }
             
             if (payMode === "CASH") {
               await addGallaTransaction({
@@ -364,7 +431,7 @@ export async function renderBillingView(containerEl, onNavigate) {
               closeModal();
               renderBillingView(containerEl, onNavigate);
             } else {
-              alert(res.message);
+              alert(res.message || "भुगतान दर्ज नहीं हो सका");
             }
           });
         });
@@ -376,3 +443,18 @@ export async function renderBillingView(containerEl, onNavigate) {
 
   renderContent();
 }
+
+/**
+ * 2. New Direct Invoice / Bill Modal with Complete Taxi Calculation Engine
+ */
+function openDirectBillModal(openModal, closeModal, customers, vehicles, containerEl, onNavigate) {
+  const today = new Date().toISOString().slice(0, 10);
+  const autoInvNum = "ATU-" + Date.now().toString().slice(-6);
+
+  const customerOptions = customers.map(c => {
+    const bName = c.businessName ? ` (${c.businessName})` : "";
+    return `<option value="${c.name}">${bName}</option>`;
+  }).join("");
+
+  const vehicleOptions = vehicles.map(v => {
+    return `<option value="${v.regNumber}">${v.regNumber} (${
