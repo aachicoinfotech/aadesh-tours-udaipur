@@ -1,24 +1,32 @@
 // js/views/billing-view.js
-// Aadesh Tours Udaipur - Compact, Crash-Proof Billing & Red Billbook PDF
+// Aadesh Tours Udaipur - Compact, Crash-Proof Billing with Logo & Red Billbook PDF
 
 import { db } from "../config/firebase-config.js";
 import { 
   collection, doc, setDoc, getDocs, deleteDoc, query, orderBy 
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const BIZ = {
-  name: "AADESH TOURS",
-  sub: "— UDAIPUR —",
-  addr: "Sec. 14, Balicha, Udaipur, (Raj.) 313001",
-  mob: "9602842390, 7043195007",
-  email: "chetannathsisodiya500@gmail.com",
-  tag: "All Type Of Taxi Tourist Cars (a.c. And Non A.c.) 24 Hours Available",
-  holder: "CHETAN NATH",
-  bank: "State Bank of India",
-  acc: "44936542535",
-  ifsc: "SBIN0016178",
-  upi: "9602842390@upi"
-};
+function getBiz() {
+  try {
+    const raw = localStorage.getItem("aadesh_master_settings") || localStorage.getItem("aadesh_business_profile");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return {
+    businessName: "AADESH TOURS",
+    sub: "— UDAIPUR —",
+    address: "Sec. 14, Balicha, Udaipur, (Raj.) 313001",
+    phone: "9602842390",
+    altPhone: "7043195007",
+    email: "chetannathsisodiya500@gmail.com",
+    tagline: "All Type Of Taxi Tourist Cars (a.c. And Non A.c.) 24 Hours Available",
+    accountHolder: "CHETAN NATH",
+    bankName: "State Bank of India",
+    accountNo: "44936542535",
+    ifsc: "SBIN0016178",
+    upiId: "9602842390@upi",
+    logoUrl: ""
+  };
+}
 
 export async function renderBillingView(containerEl, onNavigate) {
   let invoices = [];
@@ -116,7 +124,8 @@ export async function renderBillingView(containerEl, onNavigate) {
     b.onclick = () => {
       const inv = invoices.find(i => i.invoiceNumber === b.dataset.inv);
       if (!inv) return;
-      const msg = `*${BIZ.name} - ${BIZ.sub}*\nBill #${inv.invoiceNumber}\nParty: *${inv.customerName}*\nGaadi: *${inv.vehicleNumber}*\nRoute: ${inv.pickupLocation || 'Local'}\nTotal: ₹${Number(inv.totalAmount||0).toLocaleString('en-IN')}\nJama: ₹${Number(inv.advancePaid||0).toLocaleString('en-IN')}\n*Baki: ₹${Number(inv.balanceDue||0).toLocaleString('en-IN')}*\nDhanyawad! Contact: ${BIZ.mob}`;
+      const biz = getBiz();
+      const msg = `*${biz.businessName}*\nBill #${inv.invoiceNumber}\nParty: *${inv.customerName}*\nGaadi: *${inv.vehicleNumber}*\nRoute: ${inv.pickupLocation || 'Local'}\nTotal: ₹${Number(inv.totalAmount||0).toLocaleString('en-IN')}\nJama: ₹${Number(inv.advancePaid||0).toLocaleString('en-IN')}\n*Baki: ₹${Number(inv.balanceDue||0).toLocaleString('en-IN')}*\nDhanyawad! Contact: ${biz.phone}`;
       const num = (inv.customerPhone || '').replace(/\D/g, '');
       window.open(`https://wa.me/${num ? ('91' + num) : ''}?text=${encodeURIComponent(msg)}`, "_blank");
     };
@@ -131,6 +140,7 @@ export async function renderBillingView(containerEl, onNavigate) {
 }
 
 function printRedBill(inv) {
+  const biz = getBiz();
   const w = window.open("", "_blank");
   if (!w) { alert("Popup allow karein"); return; }
   const f = Number(inv.vehicleFare) || Number(inv.totalAmount) || 0;
@@ -139,6 +149,8 @@ function printRedBill(inv) {
   const tot = Number(inv.totalAmount) || 0;
   const adv = Number(inv.advancePaid) || 0;
   const bal = Number(inv.balanceDue) || 0;
+
+  const logoHtml = biz.logoUrl ? `<img src="${biz.logoUrl}" style="max-height: 60px; max-width: 90px; object-fit: contain; margin-bottom: 4px;">` : '';
 
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Bill #${inv.invoiceNumber}</title>
   <style>
@@ -172,11 +184,12 @@ function printRedBill(inv) {
   <div class="box">
     <div class="top-tag"><span>INVOICE</span></div>
     <div class="head">
-      <div class="h1">${BIZ.name}</div>
-      <div class="h2">${BIZ.sub}</div>
-      <div class="addr">${BIZ.addr}</div>
-      <div class="mob">Mob. ${BIZ.mob} | ${BIZ.email}</div>
-      <div class="tag">${BIZ.tag}</div>
+      ${logoHtml}
+      <div class="h1">${biz.businessName}</div>
+      <div class="h2">${biz.sub || '— UDAIPUR —'}</div>
+      <div class="addr">${biz.address}</div>
+      <div class="mob">Mob. ${biz.phone}${biz.altPhone ? ', ' + biz.altPhone : ''} | ${biz.email || ''}</div>
+      <div class="tag">${biz.tagline || ''}</div>
     </div>
     <div class="meta">
       <div>M/s. <span class="dot" style="min-width:200px;">${inv.customerName}</span><br>Vehicle No. <span class="dot" style="min-width:160px; text-transform:uppercase;">${inv.vehicleNumber||'Cab'}</span></div>
@@ -186,7 +199,7 @@ function printRedBill(inv) {
       <thead><tr><th style="width:50%;">PARTICULAR</th><th class="c" style="width:16%;">RATE</th><th class="c" style="width:16%;">TOTAL K.M.</th><th class="r" style="width:18%;">AMOUNT</th></tr></thead>
       <tbody>
         <tr style="height:110px;">
-          <td><strong style="font-size:13px;">${inv.pickupLocation||'Local Udaipur Tour'}</strong><div style="color:#64748b; font-size:10px; margin-top:3px;">Vehicle: ${inv.vehicleNumber||'Cab'} (${inv.totalDays||1} Day)</div></td>
+          <td><strong style="font-size:13px;">${inv.pickupLocation||'Local Tour'}</strong><div style="color:#64748b; font-size:10px; margin-top:3px;">Vehicle: ${inv.vehicleNumber||'Cab'} (${inv.totalDays||1} Day)</div></td>
           <td class="c">₹${inv.ratePerKm||'-'}</td>
           <td class="c">${inv.totalKm||'-'}</td>
           <td class="r font-bold">₹${f.toLocaleString('en-IN')}</td>
@@ -195,9 +208,9 @@ function printRedBill(inv) {
           <td colspan="2" rowspan="5" style="vertical-align:top; border:1.5px solid #b91c1c;">
             <div class="bank">
               <strong style="color:#b91c1c; font-size:9.5px;">Bank Details:</strong><br>
-              <strong>Name:</strong> ${BIZ.holder} | <strong>Bank:</strong> ${BIZ.bank}<br>
-              <strong>A/C:</strong> ${BIZ.acc} | <strong>IFSC:</strong> ${BIZ.ifsc}<br>
-              <strong>UPI ID:</strong> ${BIZ.upi}
+              <strong>Name:</strong> ${biz.accountHolder} | <strong>Bank:</strong> ${biz.bankName}<br>
+              <strong>A/C:</strong> ${biz.accountNo} | <strong>IFSC:</strong> ${biz.ifsc}<br>
+              <strong>UPI ID:</strong> ${biz.upiId}
             </div>
             <div style="font-size:10px; margin-top:6px;"><strong>Rupees:</strong> <span class="dot">₹${tot.toLocaleString('en-IN')} Only</span></div>
           </td>
@@ -216,7 +229,7 @@ function printRedBill(inv) {
     </div>
     <div class="sign">
       <div style="border-top:1px dashed #64748b; padding-top:4px; width:120px; text-align:center;">Customer's Sig.</div>
-      <div style="color:#b91c1c; text-align:center;"><br><span style="border-top:1px solid #b91c1c; padding-top:2px;">For: AADESH TOURS</span></div>
+      <div style="color:#b91c1c; text-align:center;"><br><span style="border-top:1px solid #b91c1c; padding-top:2px;">For: ${biz.businessName}</span></div>
     </div>
   </div>
   <script>setTimeout(function(){window.print();},400);</script>
