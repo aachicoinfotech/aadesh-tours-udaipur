@@ -1,4 +1,4 @@
-// js/views/duty-slip-view.js
+// js/views/duty-slip-view.js - Aadesh Tours Udaipur Duty Slip Module
 window.DutySlipView = {
     render: function(containerId, tripData = null) {
         const container = document.getElementById(containerId);
@@ -9,74 +9,71 @@ window.DutySlipView = {
         const phones = settings.phones || "9602842390 / 7043195007";
 
         container.innerHTML = `
-            <div class="max-w-4xl mx-auto bg-slate-900 text-slate-100 p-4 sm:p-6 rounded-2xl shadow-xl border border-slate-800">
-                <div class="flex flex-wrap items-center justify-between gap-4 mb-6 pb-4 border-b border-slate-800">
-                    <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
-                        <span>📋</span> Duty Slip / Log Sheet
-                    </h2>
+            <div class="space-y-4">
+                <div class="vault-card flex flex-wrap items-center justify-between gap-3 print:hidden">
+                    <div>
+                        <h2 class="text-base font-bold text-amber-400">📋 Duty Slip / Log Sheet</h2>
+                        <p class="text-xs text-slate-400">Physical log sheet format for customer signature</p>
+                    </div>
                     <div class="flex items-center gap-2">
-                        <button onclick="DutySlipView.downloadPDF()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-semibold px-4 py-2 rounded-lg text-sm flex items-center gap-1.5 transition">
-                            <span>📥</span> PDF Download
-                        </button>
-                        <button onclick="DutySlipView.shareWhatsApp()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-2 rounded-lg text-sm flex items-center gap-1.5 transition">
-                            <span>📲</span> WhatsApp Share
-                        </button>
+                        <button onclick="window.print()" class="btn btn-primary px-3 py-1.5 text-xs">📥 PDF Download</button>
+                        <button onclick="DutySlipView.shareWhatsApp()" class="btn btn-success px-3 py-1.5 text-xs">📲 WhatsApp Share</button>
                     </div>
                 </div>
 
-                <div id="duty-slip-print-area" class="bg-white text-slate-900 p-6 rounded-xl shadow-inner border-2 border-amber-500">
-                    <div class="text-center border-b-2 border-slate-900 pb-3 mb-4">
-                        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-wide text-red-700">${companyName}</h1>
-                        <p class="text-sm font-semibold text-slate-700 mt-1">Mob: ${phones}</p>
+                <div class="bg-white text-slate-900 p-6 rounded-xl shadow-xl border-2 border-amber-500 font-sans">
+                    <div class="text-center border-b-2 border-slate-900 pb-3 mb-3">
+                        <h1 class="text-2xl font-black text-red-700 uppercase">${companyName}</h1>
+                        <p class="text-xs font-bold text-slate-700 mt-1">Mob: ${phones}</p>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-3 border-b border-slate-300 pb-3">
-                        <div class="flex justify-between sm:justify-start gap-2">
+                    <div class="grid grid-cols-2 gap-3 text-xs mb-3 border-b border-slate-300 pb-3">
+                        <div>
                             <span class="font-semibold text-slate-600">Slip No:</span>
                             <span id="ds-slip-no" class="font-bold text-slate-900">${tripData?.slipNo || 'ATU-' + Date.now().toString().slice(-6)}</span>
                         </div>
-                        <div class="flex justify-between sm:justify-end gap-2">
+                        <div class="text-right">
                             <span class="font-semibold text-slate-600">Date:</span>
                             <span id="ds-date" class="font-bold text-slate-900">${tripData?.date || new Date().toISOString().split('T')[0]}</span>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-3 border-b border-slate-300 pb-3">
+                    <div class="grid grid-cols-2 gap-3 text-xs mb-3 border-b border-slate-300 pb-3">
                         <div>
-                            <label class="block font-semibold text-slate-600 text-xs mb-1">Vehicle Number & Type:</label>
-                            <input type="text" id="ds-vehicle" value="${tripData?.vehicle || ''}" placeholder="e.g. RJ-27-PA-0000" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm font-medium">
+                            <label class="form-label">Vehicle Number & Type:</label>
+                            <input type="text" id="ds-vehicle" value="${tripData?.vehicle || ''}" placeholder="e.g. RJ-27-PA-0000" class="form-input bg-slate-50 text-slate-900">
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block font-semibold text-slate-600 text-xs mb-1">Driver Name:</label>
-                                <input type="text" id="ds-driver" value="${tripData?.driver || ''}" placeholder="Driver Name" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm">
+                                <label class="form-label">Driver Name:</label>
+                                <input type="text" id="ds-driver" value="${tripData?.driver || ''}" placeholder="Driver Name" class="form-input bg-slate-50 text-slate-900">
                             </div>
                             <div>
-                                <label class="block font-semibold text-slate-600 text-xs mb-1">Driver Mob:</label>
-                                <input type="text" id="ds-driver-mob" value="${tripData?.driverMob || ''}" placeholder="Mobile" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm">
+                                <label class="form-label">Driver Mob:</label>
+                                <input type="text" id="ds-driver-mob" value="${tripData?.driverMob || ''}" placeholder="Mobile" class="form-input bg-slate-50 text-slate-900">
                             </div>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm mb-4 border-b-2 border-slate-900 pb-4">
+                    <div class="grid grid-cols-2 gap-3 text-xs mb-4 border-b-2 border-slate-900 pb-4">
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block font-semibold text-slate-600 text-xs mb-1">Guest Name:</label>
-                                <input type="text" id="ds-guest" value="${tripData?.guest || ''}" placeholder="Guest Name" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm">
+                                <label class="form-label">Guest Name:</label>
+                                <input type="text" id="ds-guest" value="${tripData?.guest || ''}" placeholder="Guest Name" class="form-input bg-slate-50 text-slate-900">
                             </div>
                             <div>
-                                <label class="block font-semibold text-slate-600 text-xs mb-1">Guest Mob:</label>
-                                <input type="text" id="ds-guest-mob" value="${tripData?.guestMob || ''}" placeholder="Mobile" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm">
+                                <label class="form-label">Guest Mob:</label>
+                                <input type="text" id="ds-guest-mob" value="${tripData?.guestMob || ''}" placeholder="Mobile" class="form-input bg-slate-50 text-slate-900">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-2">
                             <div>
-                                <label class="block font-semibold text-slate-600 text-xs mb-1">Company Name:</label>
-                                <input type="text" id="ds-company" value="${tripData?.company || ''}" placeholder="Company" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm">
+                                <label class="form-label">Company Name:</label>
+                                <input type="text" id="ds-company" value="${tripData?.company || ''}" placeholder="Company" class="form-input bg-slate-50 text-slate-900">
                             </div>
                             <div>
-                                <label class="block font-semibold text-slate-600 text-xs mb-1">Reporting Place:</label>
-                                <input type="text" id="ds-reporting" value="${tripData?.reporting || 'Udaipur'}" placeholder="Location" class="w-full bg-slate-50 border border-slate-300 rounded px-2 py-1 text-sm">
+                                <label class="form-label">Reporting Place:</label>
+                                <input type="text" id="ds-reporting" value="${tripData?.reporting || 'Udaipur'}" placeholder="Location" class="form-input bg-slate-50 text-slate-900">
                             </div>
                         </div>
                     </div>
@@ -87,53 +84,49 @@ window.DutySlipView = {
                                 <tr class="bg-slate-200 text-slate-800">
                                     <th class="border border-slate-400 p-1.5">Day</th>
                                     <th class="border border-slate-400 p-1.5">Date</th>
-                                    <th class="border border-slate-400 p-1.5">Assignment / Route</th>
+                                    <th class="border border-slate-400 p-1.5">Route / Details</th>
                                     <th class="border border-slate-400 p-1.5">Start KM</th>
                                     <th class="border border-slate-400 p-1.5">End KM</th>
                                     <th class="border border-slate-400 p-1.5">Total KM</th>
-                                    <th class="border border-slate-400 p-1.5">Start Time</th>
-                                    <th class="border border-slate-400 p-1.5">End Time</th>
                                     <th class="border border-slate-400 p-1.5">Sign</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td class="border border-slate-400 p-1 text-center">1</td>
-                                    <td class="border border-slate-400 p-1"><input type="date" class="w-full bg-transparent text-xs" value="${new Date().toISOString().split('T')[0]}"></td>
-                                    <td class="border border-slate-400 p-1"><input type="text" class="w-full bg-transparent text-xs" placeholder="Route details"></td>
-                                    <td class="border border-slate-400 p-1"><input type="number" class="w-full bg-transparent text-xs ds-start-km" value="${tripData?.startKm || 0}" oninput="DutySlipView.calcTotal(this)"></td>
-                                    <td class="border border-slate-400 p-1"><input type="number" class="w-full bg-transparent text-xs ds-end-km" value="${tripData?.endKm || 0}" oninput="DutySlipView.calcTotal(this)"></td>
+                                    <td class="border border-slate-400 p-1"><input type="date" class="w-full bg-transparent text-xs text-slate-900" value="${new Date().toISOString().split('T')[0]}"></td>
+                                    <td class="border border-slate-400 p-1"><input type="text" class="w-full bg-transparent text-xs text-slate-900" placeholder="Route details"></td>
+                                    <td class="border border-slate-400 p-1"><input type="number" class="w-full bg-transparent text-xs text-slate-900 ds-start-km" value="${tripData?.startKm || 0}" oninput="DutySlipView.calcTotal(this)"></td>
+                                    <td class="border border-slate-400 p-1"><input type="number" class="w-full bg-transparent text-xs text-slate-900 ds-end-km" value="${tripData?.endKm || 0}" oninput="DutySlipView.calcTotal(this)"></td>
                                     <td class="border border-slate-400 p-1 text-center font-bold ds-total-km">0</td>
-                                    <td class="border border-slate-400 p-1"><input type="time" class="w-full bg-transparent text-xs"></td>
-                                    <td class="border border-slate-400 p-1"><input type="time" class="w-full bg-transparent text-xs"></td>
                                     <td class="border border-slate-400 p-1 text-center text-slate-400">Sign</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-300 text-sm mb-4">
+                    <div class="grid grid-cols-3 gap-3 bg-slate-50 p-3 rounded-lg border border-slate-300 text-xs mb-4">
                         <div>
-                            <label class="block font-semibold text-slate-700 text-xs mb-1">Toll Tax (₹):</label>
-                            <input type="number" id="ds-toll" value="${tripData?.toll || 0}" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-sm">
+                            <label class="form-label text-slate-700">Toll Tax (₹):</label>
+                            <input type="number" id="ds-toll" value="${tripData?.toll || 0}" class="form-input bg-white text-slate-900">
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 text-xs mb-1">Parking (₹):</label>
-                            <input type="number" id="ds-parking" value="${tripData?.parking || 0}" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-sm">
+                            <label class="form-label text-slate-700">Parking (₹):</label>
+                            <input type="number" id="ds-parking" value="${tripData?.parking || 0}" class="form-input bg-white text-slate-900">
                         </div>
                         <div>
-                            <label class="block font-semibold text-slate-700 text-xs mb-1">Border Tax (₹):</label>
-                            <input type="number" id="ds-border" value="${tripData?.borderTax || 0}" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-sm">
+                            <label class="form-label text-slate-700">Border Tax (₹):</label>
+                            <input type="number" id="ds-border" value="${tripData?.borderTax || 0}" class="form-input bg-white text-slate-900">
                         </div>
                     </div>
 
-                    <div class="flex justify-between items-end pt-4 border-t border-slate-300 text-xs text-slate-600">
+                    <div class="flex justify-between items-end pt-3 border-t border-slate-300 text-xs text-slate-700">
                         <div>
                             <p class="font-semibold">Note: Toll, Parking & Extra charges payable by party.</p>
                             <p class="mt-1">Thanks You For Choosing <strong>Aadesh Tours</strong></p>
                         </div>
                         <div class="text-center">
-                            <div class="h-10 border-b border-slate-400 w-32 mb-1"></div>
+                            <div class="h-8 border-b border-slate-400 w-28 mb-1"></div>
                             <span class="font-semibold">Customer Signature</span>
                         </div>
                     </div>
@@ -149,8 +142,6 @@ window.DutySlipView = {
         const totalCell = row.querySelector('.ds-total-km');
         totalCell.textContent = end > start ? end - start : 0;
     },
-
-    downloadPDF: function() { window.print(); },
 
     shareWhatsApp: function() {
         const slipNo = document.getElementById('ds-slip-no').innerText;
