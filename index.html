@@ -36,7 +36,6 @@
   </script>
 
   <style>
-    /* Custom Utility Styles */
     body {
       background-color: #090d16;
       color: #f1f5f9;
@@ -97,88 +96,6 @@
     .btn-secondary:hover {
       background: #334155;
     }
-    .btn-success {
-      background: #10b981;
-      color: #ffffff;
-    }
-    .btn-danger {
-      background: #ef4444;
-      color: #ffffff;
-    }
-    .form-label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #94a3b8;
-      margin-bottom: 0.25rem;
-    }
-    .form-input, .form-select {
-      width: 100%;
-      background: #090d16;
-      border: 1px solid #334155;
-      color: #ffffff;
-      border-radius: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      outline: none;
-    }
-    .form-input:focus, .form-select:focus {
-      border-color: #f59e0b;
-    }
-    .badge-status {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.5rem;
-      border-radius: 9999px;
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-    }
-    .badge-active {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .badge-danger {
-      background: rgba(239, 68, 68, 0.15);
-      color: #f87171;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-    .badge-warning {
-      background: rgba(245, 158, 11, 0.15);
-      color: #fbbf24;
-      border: 1px solid rgba(245, 158, 11, 0.3);
-    }
-    .badge-info {
-      background: rgba(56, 189, 248, 0.15);
-      color: #38bdf8;
-      border: 1px solid rgba(56, 189, 248, 0.3);
-    }
-    .tally-table {
-      width: 100%;
-      text-align: left;
-      border-collapse: collapse;
-      font-size: 0.75rem;
-    }
-    .tally-table th {
-      padding: 0.5rem;
-      color: #64748b;
-      border-bottom: 1px solid #1e293b;
-      font-weight: 700;
-    }
-    .tally-table td {
-      padding: 0.6rem 0.5rem;
-      border-bottom: 1px solid rgba(30, 41, 59, 0.6);
-    }
-    .tally-credit {
-      color: #34d399;
-      font-family: ui-monospace, monospace;
-      font-weight: 700;
-    }
-    .tally-debit {
-      color: #f87171;
-      font-family: ui-monospace, monospace;
-      font-weight: 700;
-    }
   </style>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen pb-20">
@@ -238,24 +155,12 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <!-- Live Galla Indicator -->
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="text-[10px] text-slate-400">गल्ला:</span>
           <span id="header-galla-amount" class="font-mono font-bold text-amber-400">₹0</span>
         </div>
 
-        <!-- Compliance Alert Badge -->
-        <button id="compliance-badge" class="hidden px-2 py-1 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-400 text-xs font-bold">
-          0
-        </button>
-
-        <!-- Language Switcher Toggle Button -->
-        <button id="btn-toggle-lang" class="px-2 py-1 text-xs font-bold rounded-lg border border-amber-500/40 text-amber-400 bg-amber-500/10">
-          EN
-        </button>
-
-        <!-- Lock Button -->
         <button id="btn-lock-app" class="btn btn-secondary px-2.5 py-1 text-xs">
           🔒
         </button>
@@ -298,13 +203,18 @@
 
   <!-- Global Modal Container -->
   <div id="modal-container" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
-    <div id="modal-content" class="vault-card w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl">
-      <!-- Injected Dynamically by Controllers -->
-    </div>
+    <div id="modal-content" class="vault-card w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl"></div>
   </div>
 
-  <!-- App Bootstrap Module -->
-  <script type="module" src="./js/app.js"></script>
-</body>
-  </html>
+  <!-- All View Scripts loaded globally -->
+  <script src="./js/views/dashboard-view.js"></script>
+  <script src="./js/views/fleet-view.js"></script>
+  <script src="./js/views/trips-view.js"></script>
+  <script src="./js/views/duty-slip-view.js"></script>
+  <script src="./js/views/billing-view.js"></script>
+  <script src="./js/views/settings-view.js"></script>
   
+  <!-- Main App Router Script -->
+  <script src="./js/app.js"></script>
+</body>
+</html>
