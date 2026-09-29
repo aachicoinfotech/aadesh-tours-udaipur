@@ -29,9 +29,7 @@ window.TripsView = {
                                     <th class="text-right">Action</th>
                                 </tr>
                             </thead>
-                            <tbody id="trips-table-body">
-                                <!-- Populated dynamically -->
-                            </tbody>
+                            <tbody id="trips-table-body"></tbody>
                         </table>
                     </div>
                 </div>
@@ -81,7 +79,7 @@ window.TripsView = {
                     <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white">&times;</button>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button onclick="document.getElementById('modal-container').classList.add('hidden'); if(window.DutySlipView) DutySlipView.render('tab-trips');" class="vault-card text-left hover:border-amber-500 transition">
+                    <button onclick="document.getElementById('modal-container').classList.add('hidden'); window.switchTab('tab-trips'); if(window.DutySlipView) DutySlipView.render('tab-trips');" class="vault-card text-left hover:border-amber-500 transition">
                         <div class="text-xl mb-1">📋</div>
                         <h4 class="font-bold text-slate-100 text-xs">Duty Slip (Log Sheet)</h4>
                         <p class="text-[10px] text-slate-400 mt-0.5">Physical log sheet for customer signature.</p>
