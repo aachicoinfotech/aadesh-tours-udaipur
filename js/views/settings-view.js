@@ -1,4 +1,4 @@
-// js/views/settings-view.js - Master Settings & Data Management (Company, Cars, Drivers, Vendors)
+// js/views/settings-view.js - Master Settings with Company Logo Upload & Password Change Control
 window.SettingsView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -9,13 +9,14 @@ window.SettingsView = {
                 <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
                         <h2 class="text-base font-bold text-amber-400">⚙️ Master Settings & Vault Management</h2>
-                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Company, Cars, Drivers & Vendors Control</p>
+                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Company, Cars, Drivers & Security Control</p>
                     </div>
                 </div>
 
                 <!-- Sub Navigation Tabs for Settings -->
                 <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-2">
-                    <button type="button" id="set-tab-comp" onclick="SettingsView.switchTab('company')" class="btn btn-primary px-3 py-1.5 text-xs">🏢 Company & Bank</button>
+                    <button type="button" id="set-tab-comp" onclick="SettingsView.switchTab('company')" class="btn btn-primary px-3 py-1.5 text-xs">🏢 Company & Logo</button>
+                    <button type="button" id="set-tab-security" onclick="SettingsView.switchTab('security')" class="btn btn-secondary px-3 py-1.5 text-xs">🔒 Security & PIN</button>
                     <button type="button" id="set-tab-cars" onclick="SettingsView.switchTab('cars')" class="btn btn-secondary px-3 py-1.5 text-xs">🚘 Cars (Fleet & Docs)</button>
                     <button type="button" id="set-tab-drivers" onclick="SettingsView.switchTab('drivers')" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers List</button>
                     <button type="button" id="set-tab-vendors" onclick="SettingsView.switchTab('vendors')" class="btn btn-secondary px-3 py-1.5 text-xs">🤝 Vendors</button>
@@ -24,7 +25,7 @@ window.SettingsView = {
                 <!-- 1. Company & Bank Section -->
                 <div id="sec-company" class="vault-card space-y-4">
                     <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                        <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Company Profile & Bank Details (Billing & Duty Slip Header)</h3>
+                        <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Company Profile, Bank & Logo Settings</h3>
                         <button type="button" onclick="SettingsView.saveCompanyDetails(event)" class="btn btn-primary px-3 py-1 text-xs">💾 Save Company Info</button>
                     </div>
                     <form id="company-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -56,10 +57,32 @@ window.SettingsView = {
                             <label class="form-label text-slate-300">Bank Name & Branch</label>
                             <input type="text" id="bank-name" class="form-input bg-slate-950 text-white border-slate-700" value="Union Bank of India">
                         </div>
+                        <div class="sm:col-span-2">
+                            <label class="form-label text-slate-300">Company Logo Upload (Billing & Header)</label>
+                            <input type="file" id="comp-logo-file" accept="image/*" onchange="SettingsView.handleLogoUpload(event)" class="form-input bg-slate-950 text-white border-slate-700 py-1">
+                            <div class="mt-2 flex items-center gap-3">
+                                <span class="text-[10px] text-slate-400">Current Logo Preview:</span>
+                                <img id="logo-preview" src="" alt="No Logo" class="h-10 w-auto rounded border border-slate-700 object-contain bg-white p-0.5">
+                            </div>
+                        </div>
                     </form>
                 </div>
 
-                <!-- 2. Cars Section -->
+                <!-- 2. Security & Password Change Section -->
+                <div id="sec-security" class="vault-card space-y-4 hidden">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2">
+                        <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Security & Master PIN Control</h3>
+                        <button type="button" onclick="SettingsView.saveMasterPin(event)" class="btn btn-primary px-3 py-1 text-xs">🔒 PIN Update Karein</button>
+                    </div>
+                    <form class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs max-w-lg">
+                        <div>
+                            <label class="form-label text-slate-300">Naya 4-Digit Master PIN</label>
+                            <input type="password" id="new-pin" maxlength="4" class="form-input bg-slate-950 text-white border-slate-700 font-mono text-center text-base tracking-widest" placeholder="2727">
+                        </div>
+                    </form>
+                </div>
+
+                <!-- 3. Cars Section -->
                 <div id="sec-cars" class="vault-card space-y-4 hidden">
                     <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                         <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Cars & Legal Documents Management</h3>
@@ -83,7 +106,7 @@ window.SettingsView = {
                     </div>
                 </div>
 
-                <!-- 3. Drivers Section -->
+                <!-- 4. Drivers Section -->
                 <div id="sec-drivers" class="vault-card space-y-4 hidden">
                     <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                         <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Drivers Management</h3>
@@ -105,7 +128,7 @@ window.SettingsView = {
                     </div>
                 </div>
 
-                <!-- 4. Vendors Section -->
+                <!-- 5. Vendors Section -->
                 <div id="sec-vendors" class="vault-card space-y-4 hidden">
                     <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                         <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Vendors Management</h3>
@@ -135,7 +158,7 @@ window.SettingsView = {
     },
 
     switchTab: function(tabName) {
-        ['company', 'cars', 'drivers', 'vendors'].forEach(t => {
+        ['company', 'security', 'cars', 'drivers', 'vendors'].forEach(t => {
             document.getElementById(`sec-${t}`)?.classList.add('hidden');
             document.getElementById(`set-tab-${t}`)?.classList.replace('btn-primary', 'btn-secondary');
         });
@@ -146,7 +169,6 @@ window.SettingsView = {
     loadCompanyDetails: function() {
         let comp = JSON.parse(localStorage.getItem('aadesh_company_profile') || 'null');
         if (!comp) {
-            // Default physical bill profile
             comp = {
                 name: 'AADESH TOURS',
                 phones: '9602842390, 7043195007',
@@ -154,7 +176,8 @@ window.SettingsView = {
                 holder: 'Chetan Nath Sisodiya',
                 acc: '310102010460967',
                 ifsc: 'UBIN0576018',
-                bankName: 'Union Bank of India'
+                bankName: 'Union Bank of India',
+                logo: ''
             };
             localStorage.setItem('aadesh_company_profile', JSON.stringify(comp));
         }
@@ -166,21 +189,54 @@ window.SettingsView = {
         if (comp.acc) document.getElementById('bank-acc').value = comp.acc;
         if (comp.ifsc) document.getElementById('bank-ifsc').value = comp.ifsc;
         if (comp.bankName) document.getElementById('bank-name').value = comp.bankName;
+        
+        if (comp.logo) {
+            const preview = document.getElementById('logo-preview');
+            if (preview) preview.src = comp.logo;
+        }
+    },
+
+    handleLogoUpload: function(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64Logo = e.target.result;
+            const preview = document.getElementById('logo-preview');
+            if (preview) preview.src = base64Logo;
+
+            let comp = JSON.parse(localStorage.getItem('aadesh_company_profile') || '{}');
+            comp.logo = base64Logo;
+            localStorage.setItem('aadesh_company_profile', JSON.stringify(comp));
+        };
+        reader.readAsDataURL(file);
     },
 
     saveCompanyDetails: function(event) {
         event.preventDefault();
-        const comp = {
-            name: document.getElementById('comp-name').value.trim(),
-            phones: document.getElementById('comp-phones').value.trim(),
-            address: document.getElementById('comp-address').value.trim(),
-            holder: document.getElementById('bank-holder').value.trim(),
-            acc: document.getElementById('bank-acc').value.trim(),
-            ifsc: document.getElementById('bank-ifsc').value.trim(),
-            bankName: document.getElementById('bank-name').value.trim()
-        };
+        let comp = JSON.parse(localStorage.getItem('aadesh_company_profile') || '{}');
+        comp.name = document.getElementById('comp-name').value.trim();
+        comp.phones = document.getElementById('comp-phones').value.trim();
+        comp.address = document.getElementById('comp-address').value.trim();
+        comp.holder = document.getElementById('bank-holder').value.trim();
+        comp.acc = document.getElementById('bank-acc').value.trim();
+        comp.ifsc = document.getElementById('bank-ifsc').value.trim();
+        comp.bankName = document.getElementById('bank-name').value.trim();
+
         localStorage.setItem('aadesh_company_profile', JSON.stringify(comp));
         alert('Company aur Bank details safalta-poorvak save ho gayi hain!');
+    },
+
+    saveMasterPin: function(event) {
+        event.preventDefault();
+        const newPin = document.getElementById('new-pin').value.trim();
+        if (newPin.length !== 4) {
+            alert('Kripya 4 anko ka valid PIN darj karein.');
+            return;
+        }
+        localStorage.setItem('aadesh_master_pin', newPin);
+        alert('Master PIN safalta-poorvak badal diya gaya hai!');
+        document.getElementById('new-pin').value = '';
     },
 
     loadCarsData: function() {
@@ -223,7 +279,7 @@ window.SettingsView = {
         content.innerHTML = `
             <div class="p-5 space-y-3 bg-slate-900 text-slate-100 rounded-xl max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 class="text-sm font-bold text-amber-400">${id ? '✏️️ Gaadi Update Karein' : '🚘 Nayi Gaadi aur Documents Jodein'}</h3>
+                    <h3 class="text-sm font-bold text-amber-400">${id ? '✏ Gaadi Update Karein' : '🚘 Nayi Gaadi aur Documents Jodein'}</h3>
                     <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400">&times;</button>
                 </div>
                 <form onsubmit="SettingsView.saveCar(event, '${id || ''}')" class="space-y-3 text-xs">
