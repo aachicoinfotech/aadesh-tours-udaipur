@@ -43,7 +43,6 @@ window.FleetView = {
 
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         if (fleet.length === 0) {
-            // Default vehicles if empty
             fleet = [
                 { id: 'F-1', number: 'RJ-27-PA-0000', model: 'Sedan / Dzire', driver: 'Chetan Nath', status: 'Active' },
                 { id: 'F-2', number: 'RJ-27-TC-1111', model: 'SUV / Ertiga', driver: 'Driver', status: 'Active' }
