@@ -1,4 +1,4 @@
-// js/views/duty-slip-view.js - Dedicated Duty Slip & Multi-Day Log Sheet Generator
+// js/views/duty-slip-view.js - Dedicated Duty Slip & Multi-Day Log Sheet Generator with Live Auto-Save
 window.DutySlipView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -72,7 +72,6 @@ window.DutySlipView = {
 
         const fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         const drivers = JSON.parse(localStorage.getItem('aadesh_drivers') || '[]');
-        const today = new Date().toISOString().split('T')[0];
 
         content.innerHTML = `
             <div class="p-5 space-y-4 bg-slate-900 text-slate-100 rounded-xl max-h-[90vh] overflow-y-auto">
@@ -172,7 +171,7 @@ window.DutySlipView = {
         content.innerHTML = `
             <div class="p-6 space-y-4 bg-white text-slate-900 rounded-xl max-h-[90vh] overflow-y-auto font-sans">
                 <div class="flex justify-between items-center border-b-2 border-slate-900 pb-3 print:hidden">
-                    <h3 class="text-sm font-bold text-orange-600">📋 Duty Slip Log Sheet</h3>
+                    <h3 class="text-sm font-bold text-orange-600">📋 Duty Slip Log Sheet (Live Sync Enabled)</h3>
                     <div class="flex gap-2">
                         <button type="button" onclick="window.print()" class="btn btn-primary px-3 py-1 text-xs">🖨️ Print Slip</button>
                         <button type="button" onclick="DutySlipView.addRow('${slip.id}')" class="btn btn-secondary px-3 py-1 text-xs">➕ Din Jodein</button>
@@ -223,13 +222,13 @@ window.DutySlipView = {
                             ${slip.rows.map((r, idx) => `
                                 <tr class="border-b border-slate-400">
                                     <td class="border-r border-slate-400 p-1 font-mono font-bold">${idx + 1}</td>
-                                    <td class="border-r border-slate-400 p-1"><input type="date" value="${r.date}" class="bg-transparent text-center font-mono text-[10px]" onchange="DutySlipView.updateRow('${slip.id}',${idx}, 'date', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="text" value="${r.assignment}" class="w-full bg-transparent px-1 text-[11px]" placeholder="Route details" onchange="DutySlipView.updateRow('${slip.id}',${idx}, 'assignment', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="number" value="${r.startKm}" class="w-16 bg-transparent text-center font-mono" onchange="DutySlipView.updateRow('${slip.id}',${idx}, 'startKm', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="number" value="${r.endKm}" class="w-16 bg-transparent text-center font-mono" onchange="DutySlipView.updateRow('${slip.id}',${idx}, 'endKm', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1 font-mono font-bold bg-slate-50">${Math.max(0, (r.endKm || 0) - (r.startKm || 0))}</td>
-                                    <td class="border-r border-slate-400 p-1"><input type="time" value="${r.startTime || '09:00'}" class="bg-transparent text-center text-[10px]" onchange="DutySlipView.updateRow('${slip.id}',${idx}, 'startTime', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="time" value="${r.endTime || '18:00'}" class="bg-transparent text-center text-[10px]" onchange="DutySlipView.updateRow('${slip.id}',${idx}, 'endTime', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-1"><input type="date" value="${r.date}" class="bg-transparent text-center font-mono text-[10px]" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'date', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-1"><input type="text" value="${r.assignment}" class="w-full bg-transparent px-1 text-[11px]" placeholder="Route details" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'assignment', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-1"><input type="number" value="${r.startKm}" class="w-16 bg-transparent text-center font-mono" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'startKm', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-1"><input type="number" value="${r.endKm}" class="w-16 bg-transparent text-center font-mono" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'endKm', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-1 font-mono font-bold bg-slate-50" id="total-km-${idx}">${Math.max(0, (r.endKm || 0) - (r.startKm || 0))}</td>
+                                    <td class="border-r border-slate-400 p-1"><input type="time" value="${r.startTime || '09:00'}" class="bg-transparent text-center text-[10px]" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'startTime', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-1"><input type="time" value="${r.endTime || '18:00'}" class="bg-transparent text-center text-[10px]" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'endTime', this.value)"></td>
                                     <td class="p-1 print:hidden">
                                         <button type="button" onclick="DutySlipView.deleteRow('${slip.id}',${idx})" class="text-rose-600 font-bold px-1">×</button>
                                     </td>
@@ -274,6 +273,16 @@ window.DutySlipView = {
 
         slip.rows[index][field] = field.includes('Km') ? parseFloat(value) || 0 : value;
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
+
+        // Live update total km cell without reloading modal
+        if (field.includes('Km')) {
+            const start = parseFloat(slip.rows[index].startKm) || 0;
+            const end = parseFloat(slip.rows[index].endKm) || 0;
+            const totalCell = document.getElementById(`total-km-${index}`);
+            if (totalCell) totalCell.innerText = Math.max(0, end - start);
+        }
+
+        this.loadDutySlipsData();
     },
 
     deleteRow: function(slipId, index) {
