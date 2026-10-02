@@ -30,31 +30,31 @@ window.SettingsView = {
                     <form id="company-form" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                         <div>
                             <label class="form-label text-slate-300">Company Name</label>
-                            <input type="text" id="comp-name" class="form-input bg-slate-950 text-white border-slate-700" value="AADESH TOURS UDAIPUR">
+                            <input type="text" id="comp-name" class="form-input bg-slate-950 text-white border-slate-700" value="AADESH TOURS">
                         </div>
                         <div>
                             <label class="form-label text-slate-300">Primary & Secondary Contact Nos</label>
-                            <input type="text" id="comp-phones" class="form-input bg-slate-950 text-white border-slate-700 font-mono" value="9602842390 / 7043195007">
+                            <input type="text" id="comp-phones" class="form-input bg-slate-950 text-white border-slate-700 font-mono" value="9602842390, 7043195007">
                         </div>
                         <div class="sm:col-span-2">
                             <label class="form-label text-slate-300">Office Address / Reporting Place</label>
-                            <input type="text" id="comp-address" class="form-input bg-slate-950 text-white border-slate-700" value="Udaipur, Rajasthan">
+                            <input type="text" id="comp-address" class="form-input bg-slate-950 text-white border-slate-700" value="Sec. 14, Balicha, Udaipur, (Raj.) 313001">
                         </div>
                         <div>
                             <label class="form-label text-slate-300">Bank Account Name</label>
-                            <input type="text" id="bank-holder" class="form-input bg-slate-950 text-white border-slate-700" placeholder="Account Holder Name">
+                            <input type="text" id="bank-holder" class="form-input bg-slate-950 text-white border-slate-700" value="Chetan Nath Sisodiya">
                         </div>
                         <div>
                             <label class="form-label text-slate-300">Bank Account Number</label>
-                            <input type="text" id="bank-acc" class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="Account Number">
+                            <input type="text" id="bank-acc" class="form-input bg-slate-950 text-white border-slate-700 font-mono" value="310102010460967">
                         </div>
                         <div>
                             <label class="form-label text-slate-300">IFSC Code</label>
-                            <input type="text" id="bank-ifsc" class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="IFSC Code">
+                            <input type="text" id="bank-ifsc" class="form-input bg-slate-950 text-white border-slate-700 font-mono" value="UBIN0576018">
                         </div>
                         <div>
                             <label class="form-label text-slate-300">Bank Name & Branch</label>
-                            <input type="text" id="bank-name" class="form-input bg-slate-950 text-white border-slate-700" placeholder="Bank Name">
+                            <input type="text" id="bank-name" class="form-input bg-slate-950 text-white border-slate-700" value="Union Bank of India">
                         </div>
                     </form>
                 </div>
@@ -144,7 +144,21 @@ window.SettingsView = {
     },
 
     loadCompanyDetails: function() {
-        const comp = JSON.parse(localStorage.getItem('aadesh_company_profile') || '{}');
+        let comp = JSON.parse(localStorage.getItem('aadesh_company_profile') || 'null');
+        if (!comp) {
+            // Default physical bill profile
+            comp = {
+                name: 'AADESH TOURS',
+                phones: '9602842390, 7043195007',
+                address: 'Sec. 14, Balicha, Udaipur, (Raj.) 313001',
+                holder: 'Chetan Nath Sisodiya',
+                acc: '310102010460967',
+                ifsc: 'UBIN0576018',
+                bankName: 'Union Bank of India'
+            };
+            localStorage.setItem('aadesh_company_profile', JSON.stringify(comp));
+        }
+
         if (comp.name) document.getElementById('comp-name').value = comp.name;
         if (comp.phones) document.getElementById('comp-phones').value = comp.phones;
         if (comp.address) document.getElementById('comp-address').value = comp.address;
@@ -215,7 +229,7 @@ window.SettingsView = {
                 <form onsubmit="SettingsView.saveCar(event, '${id || ''}')" class="space-y-3 text-xs">
                     <div>
                         <label class="form-label text-slate-300">Vehicle Number *</label>
-                        <input type="text" id="car-num" required value="${car.number}" class="form-input bg-slate-950 text-white border-slate-700 font-mono uppercase" placeholder="RJ-27-PA-0000">
+                        <input type="text" id="car-num" required value="${car.number}" class="form-input bg-slate-950 text-white border-slate-700 font-mono uppercase" placeholder="RJ-27-TA-0000">
                     </div>
                     <div>
                         <label class="form-label text-slate-300">Model / Type *</label>
