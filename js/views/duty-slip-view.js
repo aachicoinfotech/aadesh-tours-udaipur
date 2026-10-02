@@ -1,11 +1,11 @@
-// js/views/duty-slip-view.js - Dedicated Duty Slip & Multi-Day Log Sheet Generator with Live Auto-Save
+// js/views/duty-slip-view.js - Dedicated Duty Slip with Full Width Modal & Trip Sync
 window.DutySlipView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
         container.innerHTML = `
-            <div class="space-y-4 max-w-5xl mx-auto pb-12">
+            <div class="space-y-4 max-w-6xl mx-auto pb-12">
                 <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
                         <h2 class="text-base font-bold text-amber-400">📋 Dedicated Duty Slip & Log Sheet Generator</h2>
@@ -70,17 +70,20 @@ window.DutySlipView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
+        // Make modal container wider for proper viewing
+        content.className = "vault-card w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl";
+
         const fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         const drivers = JSON.parse(localStorage.getItem('aadesh_drivers') || '[]');
 
         content.innerHTML = `
-            <div class="p-5 space-y-4 bg-slate-900 text-slate-100 rounded-xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 space-y-4 bg-slate-900 text-slate-100 rounded-xl">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                     <h3 class="text-sm font-bold text-amber-400">📋 Nayi Duty Slip Darj Karein</h3>
                     <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400">&times;</button>
                 </div>
                 <form onsubmit="DutySlipView.saveNewSlip(event)" class="space-y-3 text-xs">
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label text-slate-300">Vehicle Number *</label>
                             <select id="ds-vehicle" required class="form-input bg-slate-950 text-white border-slate-700 font-mono">
@@ -96,7 +99,7 @@ window.DutySlipView = {
                             </select>
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label text-slate-300">Guest Name *</label>
                             <input type="text" id="ds-guest" required class="form-input bg-slate-950 text-white border-slate-700" placeholder="Guest Name">
@@ -106,7 +109,7 @@ window.DutySlipView = {
                             <input type="text" id="ds-guest-mob" required class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="9876543210">
                         </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label text-slate-300">Company Name</label>
                             <input type="text" id="ds-company" class="form-input bg-slate-950 text-white border-slate-700" placeholder="Company Name">
@@ -136,8 +139,9 @@ window.DutySlipView = {
         const reporting = document.getElementById('ds-reporting').value.trim() || 'Udaipur';
         const date = new Date().toISOString().split('T')[0];
 
+        const slipId = 'DS-' + Math.floor(100000 + Math.random() * 900000);
         const newSlip = {
-            id: 'DS-' + Math.floor(100000 + Math.random() * 900000),
+            id: slipId,
             date,
             vehicle,
             driver,
@@ -154,6 +158,22 @@ window.DutySlipView = {
         slips.unshift(newSlip);
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
 
+        // Also sync/create corresponding entry in trips so it reflects everywhere
+        let trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
+        trips.unshift({
+            id: slipId.replace('DS-', 'TRIP-'),
+            date,
+            category: 'Duty Slip Trip',
+            vehicle,
+            driver,
+            guestName,
+            guestMob,
+            destination: reporting,
+            totalKm: 0,
+            grandTotal: 0
+        });
+        localStorage.setItem('aadesh_trips', JSON.stringify(trips));
+
         document.getElementById('modal-container').classList.add('hidden');
         this.loadDutySlipsData();
         this.viewSlip(newSlip.id);
@@ -164,14 +184,17 @@ window.DutySlipView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
+        // Ensure modal is wide enough
+        content.className = "vault-card w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-white text-slate-900 border border-slate-700 shadow-2xl";
+
         const slips = JSON.parse(localStorage.getItem('aadesh_duty_slips') || '[]');
         const slip = slips.find(s => s.id === slipId);
         if (!slip) return;
 
         content.innerHTML = `
-            <div class="p-6 space-y-4 bg-white text-slate-900 rounded-xl max-h-[90vh] overflow-y-auto font-sans">
+            <div class="p-6 space-y-4 font-sans">
                 <div class="flex justify-between items-center border-b-2 border-slate-900 pb-3 print:hidden">
-                    <h3 class="text-sm font-bold text-orange-600">📋 Duty Slip Log Sheet (Live Sync Enabled)</h3>
+                    <h3 class="text-sm font-bold text-orange-600">📋 Duty Slip Log Sheet (Full View)</h3>
                     <div class="flex gap-2">
                         <button type="button" onclick="window.print()" class="btn btn-primary px-3 py-1 text-xs">🖨️ Print Slip</button>
                         <button type="button" onclick="DutySlipView.addRow('${slip.id}')" class="btn btn-secondary px-3 py-1 text-xs">➕ Din Jodein</button>
@@ -190,47 +213,47 @@ window.DutySlipView = {
                 </div>
 
                 <div class="border border-slate-900 text-xs">
-                    <div class="grid grid-cols-2 border-b border-slate-900 p-1.5">
+                    <div class="grid grid-cols-2 border-b border-slate-900 p-2">
                         <div><strong class="font-bold">Vehicle:</strong> ${slip.vehicle}</div>
                         <div><strong class="font-bold">Driver:</strong> ${slip.driver}</div>
                     </div>
-                    <div class="grid grid-cols-2 border-b border-slate-900 p-1.5">
+                    <div class="grid grid-cols-2 border-b border-slate-900 p-2">
                         <div><strong class="font-bold">Guest:</strong> ${slip.guestName} (${slip.guestMob})</div>
                         <div><strong class="font-bold">Company:</strong> ${slip.company}</div>
                     </div>
-                    <div class="p-1.5">
+                    <div class="p-2">
                         <strong class="font-bold">Reporting Place:</strong> ${slip.reporting}
                     </div>
                 </div>
 
                 <div class="overflow-x-auto border border-slate-900">
-                    <table class="w-full text-center text-[11px] border-collapse">
+                    <table class="w-full text-center text-xs border-collapse">
                         <thead>
                             <tr class="bg-slate-200 border-b border-slate-900 font-bold text-slate-900">
-                                <th class="border-r border-slate-900 p-1">Days</th>
-                                <th class="border-r border-slate-900 p-1">Date</th>
-                                <th class="border-r border-slate-900 p-1">Assignment</th>
-                                <th class="border-r border-slate-900 p-1">Start-Km</th>
-                                <th class="border-r border-slate-900 p-1">End-Km</th>
-                                <th class="border-r border-slate-900 p-1">Total Km</th>
-                                <th class="border-r border-slate-900 p-1">Start Time</th>
-                                <th class="border-r border-slate-900 p-1">End Time</th>
-                                <th class="p-1 print:hidden">Action</th>
+                                <th class="border-r border-slate-900 p-2">Days</th>
+                                <th class="border-r border-slate-900 p-2">Date</th>
+                                <th class="border-r border-slate-900 p-2 w-1/3">Assignment / Route</th>
+                                <th class="border-r border-slate-900 p-2">Start-Km</th>
+                                <th class="border-r border-slate-900 p-2">End-Km</th>
+                                <th class="border-r border-slate-900 p-2">Total Km</th>
+                                <th class="border-r border-slate-900 p-2">Start Time</th>
+                                <th class="border-r border-slate-900 p-2">End Time</th>
+                                <th class="p-2 print:hidden">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${slip.rows.map((r, idx) => `
                                 <tr class="border-b border-slate-400">
-                                    <td class="border-r border-slate-400 p-1 font-mono font-bold">${idx + 1}</td>
-                                    <td class="border-r border-slate-400 p-1"><input type="date" value="${r.date}" class="bg-transparent text-center font-mono text-[10px]" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'date', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="text" value="${r.assignment}" class="w-full bg-transparent px-1 text-[11px]" placeholder="Route details" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'assignment', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="number" value="${r.startKm}" class="w-16 bg-transparent text-center font-mono" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'startKm', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="number" value="${r.endKm}" class="w-16 bg-transparent text-center font-mono" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'endKm', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1 font-mono font-bold bg-slate-50" id="total-km-${idx}">${Math.max(0, (r.endKm || 0) - (r.startKm || 0))}</td>
-                                    <td class="border-r border-slate-400 p-1"><input type="time" value="${r.startTime || '09:00'}" class="bg-transparent text-center text-[10px]" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'startTime', this.value)"></td>
-                                    <td class="border-r border-slate-400 p-1"><input type="time" value="${r.endTime || '18:00'}" class="bg-transparent text-center text-[10px]" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'endTime', this.value)"></td>
-                                    <td class="p-1 print:hidden">
-                                        <button type="button" onclick="DutySlipView.deleteRow('${slip.id}',${idx})" class="text-rose-600 font-bold px-1">×</button>
+                                    <td class="border-r border-slate-400 p-2 font-mono font-bold">${idx + 1}</td>
+                                    <td class="border-r border-slate-400 p-2"><input type="date" value="${r.date}" class="bg-transparent text-center font-mono text-xs" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'date', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-2"><input type="text" value="${r.assignment}" class="w-full bg-transparent px-1 text-xs font-bold" placeholder="Route details" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'assignment', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-2"><input type="number" value="${r.startKm}" class="w-20 bg-transparent text-center font-mono font-bold" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'startKm', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-2"><input type="number" value="${r.endKm}" class="w-20 bg-transparent text-center font-mono font-bold" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'endKm', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-2 font-mono font-bold bg-slate-100 text-sm" id="total-km-${idx}">${Math.max(0, (r.endKm || 0) - (r.startKm || 0))}</td>
+                                    <td class="border-r border-slate-400 p-2"><input type="time" value="${r.startTime || '09:00'}" class="bg-transparent text-center text-xs" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'startTime', this.value)"></td>
+                                    <td class="border-r border-slate-400 p-2"><input type="time" value="${r.endTime || '18:00'}" class="bg-transparent text-center text-xs" oninput="DutySlipView.updateRow('${slip.id}',${idx}, 'endTime', this.value)"></td>
+                                    <td class="p-2 print:hidden">
+                                        <button type="button" onclick="DutySlipView.deleteRow('${slip.id}',${idx})" class="text-rose-600 font-bold px-2 py-1 text-sm">×</button>
                                     </td>
                                 </tr>
                             `).join('')}
@@ -263,6 +286,7 @@ window.DutySlipView = {
         });
 
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
+        this.syncWithTrips(slip);
         this.viewSlip(slipId);
     },
 
@@ -274,15 +298,35 @@ window.DutySlipView = {
         slip.rows[index][field] = field.includes('Km') ? parseFloat(value) || 0 : value;
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
 
-        // Live update total km cell without reloading modal
-        if (field.includes('Km')) {
-            const start = parseFloat(slip.rows[index].startKm) || 0;
-            const end = parseFloat(slip.rows[index].endKm) || 0;
-            const totalCell = document.getElementById(`total-km-${index}`);
-            if (totalCell) totalCell.innerText = Math.max(0, end - start);
-        }
+        // Calculate total km for this row
+        const start = parseFloat(slip.rows[index].startKm) || 0;
+        const end = parseFloat(slip.rows[index].endKm) || 0;
+        const rowTotal = Math.max(0, end - start);
 
+        const totalCell = document.getElementById(`total-km-${index}`);
+        if (totalCell) totalCell.innerText = rowTotal;
+
+        // Sync changes with trips table
+        this.syncWithTrips(slip);
         this.loadDutySlipsData();
+    },
+
+    syncWithTrips: function(slip) {
+        let trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
+        const tripId = slip.id.replace('DS-', 'TRIP-');
+        
+        let totalKm = 0;
+        slip.rows.forEach(r => {
+            totalKm += Math.max(0, (parseFloat(r.endKm) || 0) - (parseFloat(r.startKm) || 0));
+        });
+
+        trips = trips.map(t => {
+            if (t.id === tripId) {
+                return { ...t, totalKm, destination: slip.rows[0]?.assignment || t.destination };
+            }
+            return t;
+        });
+        localStorage.setItem('aadesh_trips', JSON.stringify(trips));
     },
 
     deleteRow: function(slipId, index) {
@@ -295,6 +339,7 @@ window.DutySlipView = {
 
         slip.rows.splice(index, 1);
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
+        this.syncWithTrips(slip);
         this.viewSlip(slipId);
     },
 
@@ -303,6 +348,13 @@ window.DutySlipView = {
         let slips = JSON.parse(localStorage.getItem('aadesh_duty_slips') || '[]');
         slips = slips.filter(s => s.id !== slipId);
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
+
+        // Also remove from trips
+        let trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
+        const tripId = slipId.replace('DS-', 'TRIP-');
+        trips = trips.filter(t => t.id !== tripId);
+        localStorage.setItem('aadesh_trips', JSON.stringify(trips));
+
         this.loadDutySlipsData();
     }
 };
