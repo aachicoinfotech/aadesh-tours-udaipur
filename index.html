@@ -73,7 +73,7 @@
         <button class="pin-key btn btn-secondary py-3 text-lg font-bold font-mono" data-val="0">0</button>
         <button id="pin-backspace" class="btn btn-secondary py-3 text-xs font-bold text-slate-400">⌫</button>
       </div>
-      <p class="text-[11px] text-slate-500">डिफ़ॉल्ट मास्टर पिन: 2727</p>
+      <p class="text-[11px] text-slate-500">Default Master PIN: 2727</p>
     </div>
   </div>
 
@@ -90,7 +90,7 @@
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-          <span class="text-[10px] text-slate-400">गल्ला:</span>
+          <span class="text-[10px] text-slate-400">Galla:</span>
           <span id="header-galla-amount" class="font-mono font-bold text-amber-400">₹0</span>
         </div>
         <button id="btn-lock-app" class="btn btn-secondary px-2.5 py-1 text-xs">🔒</button>
@@ -104,28 +104,28 @@
     <!-- Expanded Bottom Nav (7 Tabs) -->
     <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-1 py-1.5 flex items-center justify-around">
       <button id="nav-dashboard" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-amber-400" onclick="App.navigateTo('dashboard')">
-        <span class="text-sm">📊</span><span class="text-[9px] font-bold mt-0.5">डैशबोर्ड</span>
+        <span class="text-sm">📊</span><span class="text-[9px] font-bold mt-0.5">Dashboard</span>
       </button>
       <button id="nav-fleet" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('fleet')">
-        <span class="text-sm">🚘</span><span class="text-[9px] font-bold mt-0.5">गाड़ियां</span>
+        <span class="text-sm">🚘</span><span class="text-[9px] font-bold mt-0.5">Fleet</span>
       </button>
       <button id="nav-trips" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('trips')">
-        <span class="text-sm">📋</span><span class="text-[9px] font-bold mt-0.5">ट्रिप्स</span>
+        <span class="text-sm">📋</span><span class="text-[9px] font-bold mt-0.5">Trips</span>
       </button>
       <button id="nav-dutyslip" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('dutyslip')">
-        <span class="text-sm">📝</span><span class="text-[9px] font-bold mt-0.5">ड्यूटी स्लिप</span>
+        <span class="text-sm">📝</span><span class="text-[9px] font-bold mt-0.5">Duty Slip</span>
       </button>
       <button id="nav-billing" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('billing')">
-        <span class="text-sm">💳</span><span class="text-[9px] font-bold mt-0.5">बिलिंग</span>
+        <span class="text-sm">💳</span><span class="text-[9px] font-bold mt-0.5">Billing</span>
       </button>
       <button id="nav-daybook" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('daybook')">
-        <span class="text-sm">📖</span><span class="text-[9px] font-bold mt-0.5">डेबुक</span>
+        <span class="text-sm">📖</span><span class="text-[9px] font-bold mt-0.5">Daybook</span>
       </button>
       <button id="nav-reports" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('reports')">
-        <span class="text-sm">📈</span><span class="text-[9px] font-bold mt-0.5">रिपोर्ट्स</span>
+        <span class="text-sm">📈</span><span class="text-[9px] font-bold mt-0.5">Reports</span>
       </button>
       <button id="nav-settings" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('settings')">
-        <span class="text-sm">⚙️</span><span class="text-[9px] font-bold mt-0.5">सेटिंग्स</span>
+        <span class="text-sm">⚙️</span><span class="text-[9px] font-bold mt-0.5">Settings</span>
       </button>
     </nav>
   </div>
@@ -134,11 +134,14 @@
     <div id="modal-content" class="vault-card w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl"></div>
   </div>
 
-  <!-- PIN Lock & App Script -->
+  <!-- Dynamic PIN Lock & App Script -->
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       let enteredPin = '';
-      const correctPin = '2727';
+
+      function getMasterPin() {
+        return localStorage.getItem('aadesh_master_pin') || '2727';
+      }
 
       document.querySelectorAll('.pin-key').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -147,12 +150,12 @@
             updatePinDots();
           }
           if (enteredPin.length === 4) {
-            if (enteredPin === correctPin) {
+            if (enteredPin === getMasterPin()) {
               document.getElementById('pin-screen').classList.add('hidden');
               document.getElementById('main-app').classList.remove('hidden');
               if (window.App) window.App.init();
             } else {
-              document.getElementById('pin-error-msg').innerText = 'गलत पिन! (डिफ़ॉल्ट: 2727)';
+              document.getElementById('pin-error-msg').innerText = 'Galat PIN! (Default: 2727)';
               enteredPin = '';
               updatePinDots();
             }
@@ -193,23 +196,10 @@
   </script>
 
   <!-- Complete Service Scripts -->
-  <script src="./js/services/auth-service.js"></script>
-  <script src="./js/services/company-service.js"></script>
-  <script src="./js/services/customer-service.js"></script>
   <script src="./js/services/daybook-service.js"></script>
-  <script src="./js/services/driver-service.js"></script>
-  <script src="./js/services/driver-settlement.js"></script>
-  <script src="./js/services/expense-service.js"></script>
-  <script src="./js/services/fare-calculator.js"></script>
-  <script src="./js/services/fleet-service.js"></script>
-  <script src="./js/services/galla-service.js"></script>
-  <script src="./js/services/invoice-service.js"></script>
-  <script src="./js/services/maintenance-service.js"></script>
-  <script src="./js/services/reminder-service.js"></script>
   <script src="./js/services/reports-service.js"></script>
-  <script src="./js/services/trip-service.js"></script>
-  <script src="./js/services/vendor-service.js"></script>
-  <script src="./js/services/vendor-settlement.js"></script>
+  <script src="./js/services/expense-service.js"></script>
+  <script src="./js/services/driver-settlement.js"></script>
   
   <!-- View Scripts -->
   <script src="./js/views/dashboard-view.js"></script>
