@@ -97,37 +97,34 @@
       </div>
     </header>
 
-    <main class="max-w-5xl mx-auto p-3 sm:p-4 space-y-4">
-      <div id="tab-dashboard" class="tab-pane space-y-4"></div>
-      <div id="tab-fleet" class="tab-pane hidden space-y-4"></div>
-      <div id="tab-trips" class="tab-pane hidden space-y-4"></div>
-      <div id="tab-billing" class="tab-pane hidden space-y-4"></div>
-      <div id="tab-daybook" class="tab-pane hidden space-y-4"></div>
-      <div id="tab-reports" class="tab-pane hidden space-y-4"></div>
-      <div id="tab-settings" class="tab-pane hidden space-y-4"></div>
+    <main class="max-w-6xl mx-auto p-3 sm:p-4 space-y-4">
+      <div id="main-content" class="space-y-4"></div>
     </main>
 
     <!-- Expanded Bottom Nav (7 Tabs) -->
     <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-1 py-1.5 flex items-center justify-around">
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-amber-400" data-tab="tab-dashboard">
+      <button id="nav-dashboard" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-amber-400" onclick="App.navigateTo('dashboard')">
         <span class="text-sm">📊</span><span class="text-[9px] font-bold mt-0.5">डैशबोर्ड</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-fleet">
+      <button id="nav-fleet" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('fleet')">
         <span class="text-sm">🚘</span><span class="text-[9px] font-bold mt-0.5">गाड़ियां</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-trips">
+      <button id="nav-trips" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('trips')">
         <span class="text-sm">📋</span><span class="text-[9px] font-bold mt-0.5">ट्रिप्स</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-billing">
+      <button id="nav-dutyslip" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('dutyslip')">
+        <span class="text-sm">📝</span><span class="text-[9px] font-bold mt-0.5">ड्यूटी स्लिप</span>
+      </button>
+      <button id="nav-billing" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('billing')">
         <span class="text-sm">💳</span><span class="text-[9px] font-bold mt-0.5">बिलिंग</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-daybook">
+      <button id="nav-daybook" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('daybook')">
         <span class="text-sm">📖</span><span class="text-[9px] font-bold mt-0.5">डेबुक</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-reports">
+      <button id="nav-reports" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('reports')">
         <span class="text-sm">📈</span><span class="text-[9px] font-bold mt-0.5">रिपोर्ट्स</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-settings">
+      <button id="nav-settings" class="nav-item flex flex-col items-center justify-center py-1 px-1 text-slate-400" onclick="App.navigateTo('settings')">
         <span class="text-sm">⚙️</span><span class="text-[9px] font-bold mt-0.5">सेटिंग्स</span>
       </button>
     </nav>
@@ -136,6 +133,64 @@
   <div id="modal-container" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
     <div id="modal-content" class="vault-card w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl"></div>
   </div>
+
+  <!-- PIN Lock & App Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let enteredPin = '';
+      const correctPin = '2727';
+
+      document.querySelectorAll('.pin-key').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (enteredPin.length < 4) {
+            enteredPin += btn.getAttribute('data-val');
+            updatePinDots();
+          }
+          if (enteredPin.length === 4) {
+            if (enteredPin === correctPin) {
+              document.getElementById('pin-screen').classList.add('hidden');
+              document.getElementById('main-app').classList.remove('hidden');
+              if (window.App) window.App.init();
+            } else {
+              document.getElementById('pin-error-msg').innerText = 'गलत पिन! (डिफ़ॉल्ट: 2727)';
+              enteredPin = '';
+              updatePinDots();
+            }
+          }
+        });
+      });
+
+      document.getElementById('pin-clear').addEventListener('click', () => {
+        enteredPin = '';
+        updatePinDots();
+        document.getElementById('pin-error-msg').innerText = '';
+      });
+
+      document.getElementById('pin-backspace').addEventListener('click', () => {
+        enteredPin = enteredPin.slice(0, -1);
+        updatePinDots();
+      });
+
+      document.getElementById('btn-lock-app').addEventListener('click', () => {
+        enteredPin = '';
+        updatePinDots();
+        document.getElementById('pin-error-msg').innerText = '';
+        document.getElementById('main-app').classList.add('hidden');
+        document.getElementById('pin-screen').classList.remove('hidden');
+      });
+
+      function updatePinDots() {
+        const dots = document.querySelectorAll('.pin-dot');
+        dots.forEach((dot, idx) => {
+          if (idx < enteredPin.length) {
+            dot.classList.add('bg-amber-400', 'border-amber-400');
+          } else {
+            dot.classList.remove('bg-amber-400', 'border-amber-400');
+          }
+        });
+      }
+    });
+  </script>
 
   <!-- Service Scripts -->
   <script src="./js/services/daybook-service.js"></script>
