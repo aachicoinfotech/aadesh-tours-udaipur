@@ -1,4 +1,4 @@
-// js/views/billing-view.js - Professional Tax Invoice with Auto-sync from Trips
+// js/views/billing-view.js - Professional Tax Invoice with Complete Trip & Duty Slip Auto-Fill
 window.BillingView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -79,8 +79,10 @@ window.BillingView = {
             if (found) inv = found;
         }
 
+        content.className = "vault-card w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl";
+
         content.innerHTML = `
-            <div class="p-5 space-y-4 bg-slate-900 text-slate-100 rounded-xl max-h-[90vh] overflow-y-auto">
+            <div class="p-6 space-y-4 bg-slate-900 text-slate-100 rounded-xl">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                     <h3 class="text-sm font-bold text-amber-400">${id ? '✏️ Bill Update Karein' : '💰 Naya Bill Banayein'}</h3>
                     <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400">&times;</button>
@@ -90,11 +92,11 @@ window.BillingView = {
                         <label class="form-label text-slate-300">Select From Trip / Duty Slip (Auto-fill)</label>
                         <select id="inv-trip-select" onchange="BillingView.fillFromTrip(this.value)" class="form-input bg-slate-950 text-white border-slate-700">
                             <option value="">-- Trip Chunein ya Manual Bharein --</option>
-                            ${trips.map(t => `<option value="${t.id}">${t.id} -${t.guestName} (${t.vehicle}) [₹${t.grandTotal}]</option>`).join('')}
+                            ${trips.map(t => `<option value="${t.id}">${t.id} -${t.guestName} (${t.vehicle}) [KM:${t.totalKm || 0}]</option>`).join('')}
                         </select>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2">
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
                             <label class="form-label text-slate-300">M/s. Client Name *</label>
                             <input type="text" id="inv-client" required value="${inv.clientName}" class="form-input bg-slate-950 text-white border-slate-700" placeholder="Client / Company Name">
@@ -112,8 +114,8 @@ window.BillingView = {
                             <button type="button" onclick="BillingView.addRow()" class="text-amber-400 text-[11px] font-bold">+ Row Jodein</button>
                         </div>
                         <div id="particulars-rows" class="space-y-2">
-                            ${inv.particulars.map((p, idx) => `
-                                <div class="grid grid-cols-12 gap-1 bg-slate-950 p-2 rounded border border-slate-800 particular-row">
+                            ${inv.particulars.map((p) => `
+                                <div class="grid grid-cols-12 gap-2 bg-slate-950 p-2 rounded border border-slate-800 particular-row">
                                     <div class="col-span-5"><input type="text" placeholder="Route Details" value="${p.route}" class="form-input bg-slate-900 text-xs route-input" required></div>
                                     <div class="col-span-2"><input type="number" placeholder="Rate" value="${p.rate}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs rate-input"></div>
                                     <div class="col-span-2"><input type="number" placeholder="KM" value="${p.km}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs km-input"></div>
@@ -124,7 +126,7 @@ window.BillingView = {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded border border-slate-800">
+                    <div class="grid grid-cols-3 gap-3 bg-slate-950 p-3 rounded border border-slate-800">
                         <div>
                             <label class="form-label text-slate-300">Toll / Park (₹)</label>
                             <input type="number" id="inv-toll" value="${inv.toll}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-white font-mono">
@@ -158,7 +160,7 @@ window.BillingView = {
         const container = document.getElementById('particulars-rows');
         if (!container) return;
         const div = document.createElement('div');
-        div.className = 'grid grid-cols-12 gap-1 bg-slate-950 p-2 rounded border border-slate-800 particular-row';
+        div.className = 'grid grid-cols-12 gap-2 bg-slate-950 p-2 rounded border border-slate-800 particular-row';
         div.innerHTML = `
             <div class="col-span-5"><input type="text" placeholder="Route Details" value="${route}" class="form-input bg-slate-900 text-xs route-input" required></div>
             <div class="col-span-2"><input type="number" placeholder="Rate" value="${rate}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs rate-input"></div>
@@ -193,12 +195,25 @@ window.BillingView = {
 
         document.getElementById('inv-client').value = t.guestName || '';
         document.getElementById('inv-vehicle').value = t.vehicle || '';
-        
-        // Auto populate route particulars from trip destination or package
+        document.getElementById('inv-toll').value = t.toll || 0;
+
+        // Fetch corresponding duty slip rows to auto-populate exact route breakdown
+        const slipId = tripId.replace('TRIP-', 'DS-');
+        const slips = JSON.parse(localStorage.getItem('aadesh_duty_slips') || '[]');
+        const slip = slips.find(s => s.id === slipId);
+
         const container = document.getElementById('particulars-rows');
         if (container) {
             container.innerHTML = '';
-            BillingView.addRow(t.destination || t.category || 'Trip Fare', 0, 0, t.grandTotal || 0);
+            if (slip && slip.rows && slip.rows.length > 0) {
+                slip.rows.forEach(r => {
+                    const rowKm = Math.max(0, (parseFloat(r.endKm) || 0) - (parseFloat(r.startKm) || 0));
+                    const rowAmt = rowKm * 12; // Standard rate default ₹12/km
+                    BillingView.addRow(r.assignment || 'Duty Slip Route', 12, rowKm, rowAmt);
+                });
+            } else {
+                BillingView.addRow(t.destination || t.category || 'Trip Fare', 0, t.totalKm || 0, t.grandTotal || 0);
+            }
         }
         BillingView.calcTotal();
     },
@@ -245,6 +260,8 @@ window.BillingView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
+        content.className = "vault-card w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-white text-slate-900 border border-slate-700 shadow-2xl";
+
         const invoices = JSON.parse(localStorage.getItem('aadesh_invoices') || '[]');
         const inv = invoices.find(i => i.id === invId);
         if (!inv) return;
@@ -259,7 +276,7 @@ window.BillingView = {
         const bankAcc = comp.acc || '310102010460967';
 
         content.innerHTML = `
-            <div class="p-6 space-y-4 bg-white text-slate-900 rounded-xl max-h-[90vh] overflow-y-auto font-sans border-4 border-red-700">
+            <div class="p-6 space-y-4 bg-white text-slate-900 rounded-xl font-sans border-4 border-red-700">
                 <div class="flex justify-between items-center border-b-2 border-red-700 pb-2 print:hidden">
                     <h3 class="text-sm font-bold text-red-700">📄 Tax Invoice</h3>
                     <div class="flex gap-2">
