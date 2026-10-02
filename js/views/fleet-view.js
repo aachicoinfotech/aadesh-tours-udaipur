@@ -1,4 +1,4 @@
-// js/views/fleet-view.js - Fleet & Driver Management
+// js/views/fleet-view.js - Fleet & Driver Operations Vault
 window.FleetView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -21,13 +21,11 @@ window.FleetView = {
                     </div>
                 </div>
 
-                <!-- Sub Navigation for Fleet vs Drivers -->
                 <div class="flex gap-2 border-b border-slate-800 pb-2">
-                    <button onclick="FleetView.switchSubTab('cabs')" id="subtab-cabs-btn" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan (Cabs)</button>
-                    <button onclick="FleetView.switchSubTab('drivers')" id="subtab-drivers-btn" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers & Settlements</button>
+                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan (Cabs)</button>
+                    <button type="button" id="subtab-drivers-btn" onclick="FleetView.switchSubTab('drivers')" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers & Settlements</button>
                 </div>
 
-                <!-- Cabs Section -->
                 <div id="fleet-cabs-section" class="vault-card space-y-3">
                     <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Vehicles</h3>
                     <div class="overflow-x-auto">
@@ -46,7 +44,6 @@ window.FleetView = {
                     </div>
                 </div>
 
-                <!-- Drivers Section -->
                 <div id="fleet-drivers-section" class="vault-card space-y-3 hidden">
                     <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Drivers & Advances</h3>
                     <div class="overflow-x-auto">
