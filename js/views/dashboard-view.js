@@ -35,13 +35,13 @@ window.DashboardView = {
                 <div class="vault-card space-y-3">
                     <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Quick Actions</h3>
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <button onclick="window.switchTab('tab-trips'); TripsView.openChoiceModal();" class="btn btn-primary py-2.5 text-xs">
+                        <button onclick="document.querySelectorAll('.nav-tab-btn')[2].click(); if(window.TripsView) TripsView.openChoiceModal();" class="btn btn-primary py-2.5 text-xs">
                             ➕ Nayi Entry / Bill
                         </button>
-                        <button onclick="window.switchTab('tab-billing');" class="btn btn-secondary py-2.5 text-xs">
+                        <button onclick="document.querySelectorAll('.nav-tab-btn')[3].click();" class="btn btn-secondary py-2.5 text-xs">
                             🧾 Billbook / Invoices
                         </button>
-                        <button onclick="window.switchTab('tab-fleet');" class="btn btn-secondary py-2.5 text-xs">
+                        <button onclick="document.querySelectorAll('.nav-tab-btn')[1].click();" class="btn btn-secondary py-2.5 text-xs">
                             🚘 Gaadiyaan Management
                         </button>
                     </div>
