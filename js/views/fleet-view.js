@@ -1,4 +1,4 @@
-// js/views/fleet-view.js - Fleet, Maintenance & Reminders Manager
+// js/views/fleet-view.js - Aadesh Tours Udaipur Fleet & Driver Manager
 window.FleetView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -8,36 +8,36 @@ window.FleetView = {
             <div class="space-y-4">
                 <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
-                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet, Maintenance & Reminders Vault</h2>
-                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Cabs, Insurance, PUC & Fitness tracking</p>
+                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet & Driver Management Vault</h2>
+                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Separate management for Cabs and Drivers</p>
                     </div>
                     <div class="flex gap-2">
-                        <button onclick="FleetView.openAddVehicleModal()" class="btn btn-primary px-3 py-2 text-xs">
+                        <button type="button" onclick="FleetView.openAddVehicleModal()" class="btn btn-primary px-3 py-2 text-xs">
                             ➕ Gaadi Jodein
                         </button>
-                        <button onclick="FleetView.openAddDriverModal()" class="btn btn-secondary px-3 py-2 text-xs">
+                        <button type="button" onclick="FleetView.openAddDriverModal()" class="btn btn-secondary px-3 py-2 text-xs">
                             👤 Driver Jodein
                         </button>
                     </div>
                 </div>
 
                 <div class="flex gap-2 border-b border-slate-800 pb-2">
-                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan & Expiry Reminders</button>
-                    <button type="button" id="subtab-drivers-btn" onclick="FleetView.switchSubTab('drivers')" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers & Settlements</button>
+                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan & Documents</button>
+                    <button type="button" id="subtab-drivers-btn" onclick="FleetView.switchSubTab('drivers')" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers List & Settlements</button>
                 </div>
 
-                <!-- Cabs & Reminders Section -->
+                <!-- Cabs Section -->
                 <div id="fleet-cabs-section" class="vault-card space-y-3">
-                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Document Expiry Status</h3>
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Document Details</h3>
                     <div class="overflow-x-auto">
                         <table class="tally-table">
                             <thead>
                                 <tr>
                                     <th>Vehicle Number</th>
                                     <th>Model</th>
-                                    <th>Driver</th>
                                     <th>Insurance Expiry</th>
                                     <th>Fitness / PUC</th>
+                                    <th>Status</th>
                                     <th class="text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -48,15 +48,15 @@ window.FleetView = {
 
                 <!-- Drivers Section -->
                 <div id="fleet-drivers-section" class="vault-card space-y-3 hidden">
-                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Drivers & Advances</h3>
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Drivers Management</h3>
                     <div class="overflow-x-auto">
                         <table class="tally-table">
                             <thead>
                                 <tr>
                                     <th>Driver Name</th>
                                     <th>Mobile Number</th>
-                                    <th>License No</th>
-                                    <th>Advance Taken</th>
+                                    <th>License Number</th>
+                                    <th>Advance / Balance</th>
                                     <th class="text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -95,8 +95,8 @@ window.FleetView = {
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         if (fleet.length === 0) {
             fleet = [
-                { id: 'F-1', number: 'RJ-27-PA-0000', model: 'Sedan / Dzire', driver: 'Chetan Nath', insurance: '2026-12-31', fitness: '2026-10-15', status: 'Active' },
-                { id: 'F-2', number: 'RJ-27-TC-1111', model: 'SUV / Ertiga', driver: 'Driver', insurance: '2026-11-20', fitness: '2026-11-10', status: 'Active' }
+                { id: 'F-1', number: 'RJ-27-PA-0000', model: 'Sedan / Dzire', insurance: '2026-12-31', fitness: '2026-10-15', status: 'Active' },
+                { id: 'F-2', number: 'RJ-27-TC-1111', model: 'SUV / Ertiga', insurance: '2026-11-20', fitness: '2026-11-10', status: 'Active' }
             ];
             localStorage.setItem('aadesh_fleet', JSON.stringify(fleet));
         }
@@ -105,11 +105,12 @@ window.FleetView = {
             <tr>
                 <td class="font-mono font-bold text-amber-400">${f.number}</td>
                 <td>${f.model}</td>
-                <td>${f.driver}</td>
                 <td class="font-mono text-xs text-slate-300">${f.insurance || 'N/A'}</td>
                 <td class="font-mono text-xs text-slate-300">${f.fitness || 'N/A'}</td>
-                <td class="text-right">
-                    <button onclick="FleetView.deleteVehicle('${f.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-rose-400">Hataeinj</button>
+                <td><span class="badge-status badge-active">${f.status}</span></td>
+                <td class="text-right space-x-1">
+                    <button type="button" onclick="FleetView.openEditVehicleModal('${f.id}')" class="btn btn-secondary px-2 py-1 text-[10px]">Edit</button>
+                    <button type="button" onclick="FleetView.deleteVehicle('${f.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-rose-400">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -132,8 +133,9 @@ window.FleetView = {
                 <td class="font-mono">${d.mobile}</td>
                 <td class="font-mono text-slate-400">${d.license}</td>
                 <td class="font-mono text-amber-400">₹${d.advance || 0}</td>
-                <td class="text-right">
-                    <button onclick="FleetView.deleteDriver('${d.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-rose-400">Hataeinj</button>
+                <td class="text-right space-x-1">
+                    <button type="button" onclick="FleetView.openEditDriverModal('${d.id}')" class="btn btn-secondary px-2 py-1 text-[10px]">Edit</button>
+                    <button type="button" onclick="FleetView.deleteDriver('${d.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-rose-400">Delete</button>
                 </td>
             </tr>
         `).join('');
@@ -143,41 +145,36 @@ window.FleetView = {
         const modal = document.getElementById('modal-container');
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
-
         const today = new Date().toISOString().split('T')[0];
 
         content.innerHTML = `
-            <div class="p-4 space-y-3">
+            <div class="p-5 space-y-4 bg-slate-900 text-slate-100 rounded-xl">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 class="text-sm font-bold text-amber-400">🚘 Nayi Gaadi aur Reminder Darj Karein</h3>
-                    <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400">&times;</button>
+                    <h3 class="text-sm font-bold text-amber-400">🚘 Nayi Gaadi aur Documents Jodein</h3>
+                    <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
                 </div>
                 <form onsubmit="FleetView.saveVehicle(event)" class="space-y-3 text-xs">
                     <div>
-                        <label class="form-label">Vehicle Number *</label>
-                        <input type="text" id="fv-number" required class="form-input font-mono" placeholder="RJ-27-PA-0000">
+                        <label class="form-label text-slate-300">Vehicle Number *</label>
+                        <input type="text" id="fv-number" required class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="RJ-27-PA-0000">
                     </div>
                     <div>
-                        <label class="form-label">Vehicle Model / Type *</label>
-                        <input type="text" id="fv-model" required class="form-input" placeholder="Sedan / SUV / Dzire">
-                    </div>
-                    <div>
-                        <label class="form-label">Assigned Driver Name</label>
-                        <input type="text" id="fv-driver" class="form-input" placeholder="Driver Name">
+                        <label class="form-label text-slate-300">Vehicle Model / Type *</label>
+                        <input type="text" id="fv-model" required class="form-input bg-slate-950 text-white border-slate-700" placeholder="Sedan / SUV / Dzire">
                     </div>
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="form-label">Insurance Expiry Date</label>
-                            <input type="date" id="fv-insurance" value="${today}" class="form-input">
+                            <label class="form-label text-slate-300">Insurance Expiry Date</label>
+                            <input type="date" id="fv-insurance" value="${today}" class="form-input bg-slate-950 text-white border-slate-700">
                         </div>
                         <div>
-                            <label class="form-label">Fitness / PUC Expiry Date</label>
-                            <input type="date" id="fv-fitness" value="${today}" class="form-input">
+                            <label class="form-label text-slate-300">Fitness / PUC Expiry</label>
+                            <input type="date" id="fv-fitness" value="${today}" class="form-input bg-slate-950 text-white border-slate-700">
                         </div>
                     </div>
-                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                    <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                         <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="btn btn-secondary px-3 py-1.5">Radd</button>
-                        <button type="submit" class="btn btn-primary px-4 py-1.5">Gaadi & Reminders Save Karein</button>
+                        <button type="submit" class="btn btn-primary px-4 py-1.5 font-bold">Gaadi Save Karein</button>
                     </div>
                 </form>
             </div>
@@ -191,31 +188,31 @@ window.FleetView = {
         if (!modal || !content) return;
 
         content.innerHTML = `
-            <div class="p-4 space-y-3">
+            <div class="p-5 space-y-4 bg-slate-900 text-slate-100 rounded-xl">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                     <h3 class="text-sm font-bold text-amber-400">👤 Naya Driver Jodein</h3>
-                    <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400">&times;</button>
+                    <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
                 </div>
                 <form onsubmit="FleetView.saveDriver(event)" class="space-y-3 text-xs">
                     <div>
-                        <label class="form-label">Driver Name *</label>
-                        <input type="text" id="fd-name" required class="form-input" placeholder="Full Name">
+                        <label class="form-label text-slate-300">Driver Name *</label>
+                        <input type="text" id="fd-name" required class="form-input bg-slate-950 text-white border-slate-700" placeholder="Full Name">
                     </div>
                     <div>
-                        <label class="form-label">Mobile Number *</label>
-                        <input type="text" id="fd-mobile" required class="form-input font-mono" placeholder="9876543210">
+                        <label class="form-label text-slate-300">Mobile Number *</label>
+                        <input type="text" id="fd-mobile" required class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="9876543210">
                     </div>
                     <div>
-                        <label class="form-label">License Number</label>
-                        <input type="text" id="fd-license" class="form-input font-mono" placeholder="RJ27XXXXXXXX">
+                        <label class="form-label text-slate-300">License Number</label>
+                        <input type="text" id="fd-license" class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="RJ27XXXXXXXX">
                     </div>
                     <div>
-                        <label class="form-label">Advance Taken (₹)</label>
-                        <input type="number" id="fd-advance" value="0" class="form-input font-mono text-amber-400">
+                        <label class="form-label text-slate-300">Advance / Opening Balance (₹)</label>
+                        <input type="number" id="fd-advance" value="0" class="form-input bg-slate-950 text-amber-400 border-slate-700 font-mono">
                     </div>
-                    <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
+                    <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                         <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="btn btn-secondary px-3 py-1.5">Radd</button>
-                        <button type="submit" class="btn btn-primary px-4 py-1.5">Driver Save Karein</button>
+                        <button type="submit" class="btn btn-primary px-4 py-1.5 font-bold">Driver Save Karein</button>
                     </div>
                 </form>
             </div>
@@ -227,12 +224,11 @@ window.FleetView = {
         event.preventDefault();
         const number = document.getElementById('fv-number').value.trim();
         const model = document.getElementById('fv-model').value.trim();
-        const driver = document.getElementById('fv-driver').value.trim() || 'Self';
         const insurance = document.getElementById('fv-insurance').value;
         const fitness = document.getElementById('fv-fitness').value;
 
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
-        fleet.push({ id: 'F-' + Date.now(), number, model, driver, insurance, fitness, status: 'Active' });
+        fleet.push({ id: 'F-' + Date.now(), number, model, insurance, fitness, status: 'Active' });
         localStorage.setItem('aadesh_fleet', JSON.stringify(fleet));
 
         document.getElementById('modal-container').classList.add('hidden');
