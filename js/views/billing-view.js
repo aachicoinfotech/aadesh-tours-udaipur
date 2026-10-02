@@ -1,4 +1,4 @@
-// js/views/billing-view.js - Professional Tax Invoice & Bill Generator (Auto-sync with Settings)
+// js/views/billing-view.js - Professional Tax Invoice with Auto-sync from Trips
 window.BillingView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -87,7 +87,7 @@ window.BillingView = {
                 </div>
                 <form onsubmit="BillingView.saveInvoice(event, '${id || ''}')" class="space-y-3 text-xs">
                     <div>
-                        <label class="form-label text-slate-300">Select From Trip (Optional)</label>
+                        <label class="form-label text-slate-300">Select From Trip / Duty Slip (Auto-fill)</label>
                         <select id="inv-trip-select" onchange="BillingView.fillFromTrip(this.value)" class="form-input bg-slate-950 text-white border-slate-700">
                             <option value="">-- Trip Chunein ya Manual Bharein --</option>
                             ${trips.map(t => `<option value="${t.id}">${t.id} -${t.guestName} (${t.vehicle}) [₹${t.grandTotal}]</option>`).join('')}
@@ -154,16 +154,16 @@ window.BillingView = {
         modal.classList.remove('hidden');
     },
 
-    addRow: function() {
+    addRow: function(route = '', rate = 0, km = 0, amount = 0) {
         const container = document.getElementById('particulars-rows');
         if (!container) return;
         const div = document.createElement('div');
         div.className = 'grid grid-cols-12 gap-1 bg-slate-950 p-2 rounded border border-slate-800 particular-row';
         div.innerHTML = `
-            <div class="col-span-5"><input type="text" placeholder="Route Details" class="form-input bg-slate-900 text-xs route-input" required></div>
-            <div class="col-span-2"><input type="number" placeholder="Rate" value="0" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs rate-input"></div>
-            <div class="col-span-2"><input type="number" placeholder="KM" value="0" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs km-input"></div>
-            <div class="col-span-2"><input type="number" placeholder="Amount" value="0" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs font-bold text-emerald-400 amt-input" required></div>
+            <div class="col-span-5"><input type="text" placeholder="Route Details" value="${route}" class="form-input bg-slate-900 text-xs route-input" required></div>
+            <div class="col-span-2"><input type="number" placeholder="Rate" value="${rate}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs rate-input"></div>
+            <div class="col-span-2"><input type="number" placeholder="KM" value="${km}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs km-input"></div>
+            <div class="col-span-2"><input type="number" placeholder="Amount" value="${amount}" oninput="BillingView.calcTotal()" class="form-input bg-slate-900 text-xs font-bold text-emerald-400 amt-input" required></div>
             <div class="col-span-1 flex items-center justify-center"><button type="button" onclick="this.closest('.particular-row').remove(); BillingView.calcTotal();" class="text-rose-500 font-bold text-sm">×</button></div>
         `;
         container.appendChild(div);
@@ -193,6 +193,14 @@ window.BillingView = {
 
         document.getElementById('inv-client').value = t.guestName || '';
         document.getElementById('inv-vehicle').value = t.vehicle || '';
+        
+        // Auto populate route particulars from trip destination or package
+        const container = document.getElementById('particulars-rows');
+        if (container) {
+            container.innerHTML = '';
+            BillingView.addRow(t.destination || t.category || 'Trip Fare', 0, 0, t.grandTotal || 0);
+        }
+        BillingView.calcTotal();
     },
 
     saveInvoice: function(event, id) {
@@ -241,7 +249,6 @@ window.BillingView = {
         const inv = invoices.find(i => i.id === invId);
         if (!inv) return;
 
-        // Auto-fetch company and bank details from Settings/LocalStorage
         const comp = JSON.parse(localStorage.getItem('aadesh_company_profile') || '{}');
         const compName = comp.name || 'AADESH TOURS';
         const compAddress = comp.address || 'Sec. 14, Balicha, Udaipur, (Raj.) 313001';
@@ -254,14 +261,13 @@ window.BillingView = {
         content.innerHTML = `
             <div class="p-6 space-y-4 bg-white text-slate-900 rounded-xl max-h-[90vh] overflow-y-auto font-sans border-4 border-red-700">
                 <div class="flex justify-between items-center border-b-2 border-red-700 pb-2 print:hidden">
-                    <h3 class="text-sm font-bold text-red-700">📄 Tax Invoice (Synced with Settings)</h3>
+                    <h3 class="text-sm font-bold text-red-700">📄 Tax Invoice</h3>
                     <div class="flex gap-2">
                         <button type="button" onclick="window.print()" class="btn btn-primary px-3 py-1 text-xs bg-red-700 text-white">🖨️ Print Bill</button>
                         <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-900 font-bold text-lg">&times;</button>
                     </div>
                 </div>
 
-                <!-- Header matching physical bill & settings data -->
                 <div class="text-center border-b-2 border-red-700 pb-2 space-y-0.5">
                     <div class="text-xs font-bold tracking-widest text-red-700 uppercase">INVOICE</div>
                     <h1 class="text-2xl font-black tracking-wider text-red-700">${compName}</h1>
@@ -271,7 +277,6 @@ window.BillingView = {
                     <p class="text-[10px] font-bold text-red-600 bg-red-50 py-0.5 mt-1 border border-red-200">All Type Of Taxi Tourist Cars (a.c. And Non A.c.) 24 Hours Available</p>
                 </div>
 
-                <!-- Client & Bill Details Box -->
                 <div class="border-2 border-red-700 text-xs p-2 grid grid-cols-12 gap-2">
                     <div class="col-span-8 space-y-1">
                         <div><strong>M/s.</strong> <span class="border-b border-dotted border-slate-600 pb-0.5 px-1 font-bold">${inv.clientName}</span></div>
@@ -283,7 +288,6 @@ window.BillingView = {
                     </div>
                 </div>
 
-                <!-- Table matching physical bill -->
                 <div class="border-2 border-red-700 text-xs">
                     <table class="w-full border-collapse">
                         <thead>
@@ -304,7 +308,6 @@ window.BillingView = {
                                 </tr>
                             `).join('')}
 
-                            <!-- Totals Section inside table -->
                             <tr class="border-b border-red-300">
                                 <td colspan="3" class="p-1.5 border-r border-red-300 text-right font-bold">TOLL/PARK.</td>
                                 <td class="p-1.5 text-right font-mono">₹${inv.toll || 0}</td>
@@ -329,7 +332,6 @@ window.BillingView = {
                     </table>
                 </div>
 
-                <!-- Bank Details & Terms Box (Auto-synced from Settings) -->
                 <div class="grid grid-cols-2 gap-2 text-[10px]">
                     <div class="border border-red-700 p-2 space-y-0.5">
                         <div class="font-bold text-red-700 border-b border-red-300 pb-0.5">Bank Details</div>
@@ -347,7 +349,6 @@ window.BillingView = {
                     </div>
                 </div>
 
-                <!-- Footer Signatures -->
                 <div class="flex justify-between items-end pt-4 text-xs font-bold">
                     <div class="border-t border-slate-900 pt-1 px-4 text-center">Customer's Sig.</div>
                     <div class="text-center space-y-2">
