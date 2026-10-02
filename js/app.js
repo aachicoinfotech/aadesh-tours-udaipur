@@ -1,5 +1,4 @@
-// js/app.js - Aadesh Tours Udaipur Fleet OS Main Controller
-
+// js/app.js - Main Router Controller
 document.addEventListener('DOMContentLoaded', () => {
     setupPinLock();
     setupTabs();
@@ -9,10 +8,9 @@ function setupPinLock() {
     const pinScreen = document.getElementById('pin-screen');
     const mainApp = document.getElementById('main-app');
     
-    const isUnlocked = sessionStorage.getItem('aadesh_unlocked');
-    if (isUnlocked === 'true') {
-        if (pinScreen) pinScreen.classList.add('hidden');
-        if (mainApp) mainApp.classList.remove('hidden');
+    if (sessionStorage.getItem('aadesh_unlocked') === 'true') {
+        pinScreen?.classList.add('hidden');
+        mainApp?.classList.remove('hidden');
         initApp();
     } else {
         let enteredPin = '';
@@ -28,8 +26,8 @@ function setupPinLock() {
                 if (enteredPin.length === 4) {
                     if (enteredPin === '2727') {
                         sessionStorage.setItem('aadesh_unlocked', 'true');
-                        if (pinScreen) pinScreen.classList.add('hidden');
-                        if (mainApp) mainApp.classList.remove('hidden');
+                        pinScreen?.classList.add('hidden');
+                        mainApp?.classList.remove('hidden');
                         initApp();
                     } else {
                         if (errorMsg) errorMsg.textContent = 'Galat PIN! (Default: 2727)';
@@ -55,18 +53,13 @@ function setupPinLock() {
 
 function updateDots(dots, count) {
     dots.forEach((dot, idx) => {
-        if (idx < count) {
-            dot.classList.add('bg-amber-400', 'border-amber-400');
-        } else {
-            dot.classList.remove('bg-amber-400', 'border-amber-400');
-        }
+        if (idx < count) dot.classList.add('bg-amber-400', 'border-amber-400');
+        else dot.classList.remove('bg-amber-400', 'border-amber-400');
     });
 }
 
 function initApp() {
-    if (window.DashboardView && typeof window.DashboardView.render === 'function') {
-        window.DashboardView.render('tab-dashboard');
-    }
+    window.DashboardView?.render('tab-dashboard');
     updateLiveGalla();
 }
 
@@ -75,24 +68,18 @@ function setupTabs() {
     tabButtons.forEach(btn => {
         btn.addEventListener('click', () => {
             const targetTabId = btn.getAttribute('data-tab');
-
             document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.add('hidden'));
             
             const targetPane = document.getElementById(targetTabId);
             if (targetPane) {
                 targetPane.classList.remove('hidden');
-                
-                if (targetTabId === 'tab-dashboard' && window.DashboardView?.render) {
-                    window.DashboardView.render('tab-dashboard');
-                } else if (targetTabId === 'tab-fleet' && window.FleetView?.render) {
-                    window.FleetView.render('tab-fleet');
-                } else if (targetTabId === 'tab-trips' && window.TripsView?.render) {
-                    window.TripsView.render('tab-trips');
-                } else if (targetTabId === 'tab-billing' && window.BillingView?.render) {
-                    window.BillingView.render('tab-billing');
-                } else if (targetTabId === 'tab-settings' && window.SettingsView?.render) {
-                    window.SettingsView.render('tab-settings');
-                }
+                if (targetTabId === 'tab-dashboard') window.DashboardView?.render('tab-dashboard');
+                else if (targetTabId === 'tab-fleet') window.FleetView?.render('tab-fleet');
+                else if (targetTabId === 'tab-trips') window.TripsView?.render('tab-trips');
+                else if (targetTabId === 'tab-billing') window.BillingView?.render('tab-billing');
+                else if (targetTabId === 'tab-daybook') window.DaybookView?.render('tab-daybook');
+                else if (targetTabId === 'tab-reports') window.ReportsView?.render('tab-reports');
+                else if (targetTabId === 'tab-settings') window.SettingsView?.render('tab-settings');
             }
 
             tabButtons.forEach(b => {
@@ -115,10 +102,6 @@ function updateLiveGalla() {
         const galla = JSON.parse(localStorage.getItem('aadesh_galla') || '{"cashIn": 0, "cashOut": 0}');
         const netGalla = (galla.cashIn || 0) - (galla.cashOut || 0);
         const gallaElem = document.getElementById('header-galla-amount');
-        if (gallaElem) {
-            gallaElem.textContent = `₹${netGalla}`;
-        }
-    } catch(e) {
-        console.error("Galla update error:", e);
-    }
+        if (gallaElem) gallaElem.textContent = `₹${netGalla}`;
+    } catch(e) { console.error("Galla error:", e); }
 }
