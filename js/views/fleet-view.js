@@ -1,4 +1,4 @@
-// js/views/fleet-view.js - Fleet & Driver Operations Vault
+// js/views/fleet-view.js - Fleet, Maintenance & Reminders Manager
 window.FleetView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -8,8 +8,8 @@ window.FleetView = {
             <div class="space-y-4">
                 <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
-                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet & Driver Operations Vault</h2>
-                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Separate management for Cabs and Drivers</p>
+                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet, Maintenance & Reminders Vault</h2>
+                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Cabs, Insurance, PUC & Fitness tracking</p>
                     </div>
                     <div class="flex gap-2">
                         <button onclick="FleetView.openAddVehicleModal()" class="btn btn-primary px-3 py-2 text-xs">
@@ -22,20 +22,22 @@ window.FleetView = {
                 </div>
 
                 <div class="flex gap-2 border-b border-slate-800 pb-2">
-                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan (Cabs)</button>
+                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan & Expiry Reminders</button>
                     <button type="button" id="subtab-drivers-btn" onclick="FleetView.switchSubTab('drivers')" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers & Settlements</button>
                 </div>
 
+                <!-- Cabs & Reminders Section -->
                 <div id="fleet-cabs-section" class="vault-card space-y-3">
-                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Vehicles</h3>
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Document Expiry Status</h3>
                     <div class="overflow-x-auto">
                         <table class="tally-table">
                             <thead>
                                 <tr>
                                     <th>Vehicle Number</th>
-                                    <th>Model / Type</th>
-                                    <th>Assigned Driver</th>
-                                    <th>Status</th>
+                                    <th>Model</th>
+                                    <th>Driver</th>
+                                    <th>Insurance Expiry</th>
+                                    <th>Fitness / PUC</th>
                                     <th class="text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -44,6 +46,7 @@ window.FleetView = {
                     </div>
                 </div>
 
+                <!-- Drivers Section -->
                 <div id="fleet-drivers-section" class="vault-card space-y-3 hidden">
                     <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Drivers & Advances</h3>
                     <div class="overflow-x-auto">
@@ -92,8 +95,8 @@ window.FleetView = {
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         if (fleet.length === 0) {
             fleet = [
-                { id: 'F-1', number: 'RJ-27-PA-0000', model: 'Sedan / Dzire', driver: 'Chetan Nath', status: 'Active' },
-                { id: 'F-2', number: 'RJ-27-TC-1111', model: 'SUV / Ertiga', driver: 'Driver', status: 'Active' }
+                { id: 'F-1', number: 'RJ-27-PA-0000', model: 'Sedan / Dzire', driver: 'Chetan Nath', insurance: '2026-12-31', fitness: '2026-10-15', status: 'Active' },
+                { id: 'F-2', number: 'RJ-27-TC-1111', model: 'SUV / Ertiga', driver: 'Driver', insurance: '2026-11-20', fitness: '2026-11-10', status: 'Active' }
             ];
             localStorage.setItem('aadesh_fleet', JSON.stringify(fleet));
         }
@@ -103,7 +106,8 @@ window.FleetView = {
                 <td class="font-mono font-bold text-amber-400">${f.number}</td>
                 <td>${f.model}</td>
                 <td>${f.driver}</td>
-                <td><span class="badge-status badge-active">${f.status}</span></td>
+                <td class="font-mono text-xs text-slate-300">${f.insurance || 'N/A'}</td>
+                <td class="font-mono text-xs text-slate-300">${f.fitness || 'N/A'}</td>
                 <td class="text-right">
                     <button onclick="FleetView.deleteVehicle('${f.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-rose-400">Hataeinj</button>
                 </td>
@@ -140,10 +144,12 @@ window.FleetView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
+        const today = new Date().toISOString().split('T')[0];
+
         content.innerHTML = `
             <div class="p-4 space-y-3">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 class="text-sm font-bold text-amber-400">🚘 Nayi Gaadi Darj Karein</h3>
+                    <h3 class="text-sm font-bold text-amber-400">🚘 Nayi Gaadi aur Reminder Darj Karein</h3>
                     <button onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400">&times;</button>
                 </div>
                 <form onsubmit="FleetView.saveVehicle(event)" class="space-y-3 text-xs">
@@ -153,15 +159,25 @@ window.FleetView = {
                     </div>
                     <div>
                         <label class="form-label">Vehicle Model / Type *</label>
-                        <input type="text" id="fv-model" required class="form-input" placeholder="Sedan / SUV / Dzire / Ertiga">
+                        <input type="text" id="fv-model" required class="form-input" placeholder="Sedan / SUV / Dzire">
                     </div>
                     <div>
                         <label class="form-label">Assigned Driver Name</label>
                         <input type="text" id="fv-driver" class="form-input" placeholder="Driver Name">
                     </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="form-label">Insurance Expiry Date</label>
+                            <input type="date" id="fv-insurance" value="${today}" class="form-input">
+                        </div>
+                        <div>
+                            <label class="form-label">Fitness / PUC Expiry Date</label>
+                            <input type="date" id="fv-fitness" value="${today}" class="form-input">
+                        </div>
+                    </div>
                     <div class="flex justify-end gap-2 pt-2 border-t border-slate-800">
                         <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="btn btn-secondary px-3 py-1.5">Radd</button>
-                        <button type="submit" class="btn btn-primary px-4 py-1.5">Gaadi Save Karein</button>
+                        <button type="submit" class="btn btn-primary px-4 py-1.5">Gaadi & Reminders Save Karein</button>
                     </div>
                 </form>
             </div>
@@ -212,9 +228,11 @@ window.FleetView = {
         const number = document.getElementById('fv-number').value.trim();
         const model = document.getElementById('fv-model').value.trim();
         const driver = document.getElementById('fv-driver').value.trim() || 'Self';
+        const insurance = document.getElementById('fv-insurance').value;
+        const fitness = document.getElementById('fv-fitness').value;
 
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
-        fleet.push({ id: 'F-' + Date.now(), number, model, driver, status: 'Active' });
+        fleet.push({ id: 'F-' + Date.now(), number, model, driver, insurance, fitness, status: 'Active' });
         localStorage.setItem('aadesh_fleet', JSON.stringify(fleet));
 
         document.getElementById('modal-container').classList.add('hidden');
