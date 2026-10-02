@@ -195,9 +195,8 @@ window.BillingView = {
 
         document.getElementById('inv-client').value = t.guestName || '';
         document.getElementById('inv-vehicle').value = t.vehicle || '';
-        document.getElementById('inv-toll').value = t.toll || 0;
+        document.getElementById('inv-toll').value = (t.toll || 0) + (t.parking || 0) + (t.borderTax || 0);
 
-        // Fetch corresponding duty slip rows to auto-populate exact route breakdown
         const slipId = tripId.replace('TRIP-', 'DS-');
         const slips = JSON.parse(localStorage.getItem('aadesh_duty_slips') || '[]');
         const slip = slips.find(s => s.id === slipId);
@@ -208,11 +207,11 @@ window.BillingView = {
             if (slip && slip.rows && slip.rows.length > 0) {
                 slip.rows.forEach(r => {
                     const rowKm = Math.max(0, (parseFloat(r.endKm) || 0) - (parseFloat(r.startKm) || 0));
-                    const rowAmt = rowKm * 12; // Standard rate default ₹12/km
+                    const rowAmt = rowKm * 12;
                     BillingView.addRow(r.assignment || 'Duty Slip Route', 12, rowKm, rowAmt);
                 });
             } else {
-                BillingView.addRow(t.destination || t.category || 'Trip Fare', 0, t.totalKm || 0, t.grandTotal || 0);
+                BillingView.addRow(t.category || 'Trip Fare', 12, t.totalKm || 0, t.totalKm * 12);
             }
         }
         BillingView.calcTotal();
@@ -274,6 +273,7 @@ window.BillingView = {
         const bankName = comp.bankName || 'Union Bank of India';
         const bankIfsc = comp.ifsc || 'UBIN0576018';
         const bankAcc = comp.acc || '310102010460967';
+        const logo = comp.logo || '';
 
         content.innerHTML = `
             <div class="p-6 space-y-4 bg-white text-slate-900 rounded-xl font-sans border-4 border-red-700">
@@ -285,7 +285,8 @@ window.BillingView = {
                     </div>
                 </div>
 
-                <div class="text-center border-b-2 border-red-700 pb-2 space-y-0.5">
+                <div class="text-center border-b-2 border-red-700 pb-2 space-y-0.5 relative">
+                    ${logo ? `<img src="${logo}" alt="Logo" class="absolute left-2 top-0 h-14 w-auto object-contain">` : ''}
                     <div class="text-xs font-bold tracking-widest text-red-700 uppercase">INVOICE</div>
                     <h1 class="text-2xl font-black tracking-wider text-red-700">${compName}</h1>
                     <p class="text-base font-black tracking-widest text-red-700">— UDAIPUR —</p>
