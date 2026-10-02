@@ -1,4 +1,4 @@
-// js/views/fleet-view.js - Fleet & Driver Management with Full CRUD Support
+// js/views/fleet-view.js - Complete Fleet & Document Management Vault
 window.FleetView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -8,8 +8,8 @@ window.FleetView = {
             <div class="space-y-4">
                 <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
-                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet & Driver Operations Vault</h2>
-                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Separate Management with Edit/Delete</p>
+                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet & Complete Document Operations</h2>
+                        <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Cab Management with All Legal Documents</p>
                     </div>
                     <div class="flex gap-2">
                         <button type="button" onclick="FleetView.openVehicleModal()" class="btn btn-primary px-3 py-2 text-xs">
@@ -22,22 +22,24 @@ window.FleetView = {
                 </div>
 
                 <div class="flex gap-2 border-b border-slate-800 pb-2">
-                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan (Fleet)</button>
+                    <button type="button" id="subtab-cabs-btn" onclick="FleetView.switchSubTab('cabs')" class="btn btn-primary px-3 py-1.5 text-xs">🚘 Gaadiyaan & Documents</button>
                     <button type="button" id="subtab-drivers-btn" onclick="FleetView.switchSubTab('drivers')" class="btn btn-secondary px-3 py-1.5 text-xs">👥 Drivers List</button>
                 </div>
 
                 <!-- Cabs Section -->
                 <div id="fleet-cabs-section" class="vault-card space-y-3">
-                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Vehicles</h3>
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Document Expiry Status</h3>
                     <div class="overflow-x-auto">
                         <table class="tally-table">
                             <thead>
                                 <tr>
                                     <th>Vehicle Number</th>
-                                    <th>Model / Type</th>
-                                    <th>Insurance Expiry</th>
-                                    <th>Status</th>
-                                    <th class="text-right">Actions (Edit / Delete)</th>
+                                    <th>Model</th>
+                                    <th>Insurance</th>
+                                    <th>PUC</th>
+                                    <th>Fitness</th>
+                                    <th>Permit / Tax</th>
+                                    <th class="text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="fleet-table-body"></tbody>
@@ -56,7 +58,7 @@ window.FleetView = {
                                     <th>Mobile Number</th>
                                     <th>License Number</th>
                                     <th>Advance (₹)</th>
-                                    <th class="text-right">Actions (Edit / Delete)</th>
+                                    <th class="text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody id="drivers-table-body"></tbody>
@@ -97,14 +99,16 @@ window.FleetView = {
             <tr>
                 <td class="font-mono font-bold text-amber-400">${f.number}</td>
                 <td>${f.model}</td>
-                <td class="font-mono text-xs text-slate-300">${f.insurance || 'N/A'}</td>
-                <td><span class="badge-status badge-active">${f.status || 'Active'}</span></td>
+                <td class="font-mono text-[11px] text-slate-300">${f.insurance || 'N/A'}</td>
+                <td class="font-mono text-[11px] text-slate-300">${f.puc || 'N/A'}</td>
+                <td class="font-mono text-[11px] text-slate-300">${f.fitness || 'N/A'}</td>
+                <td class="font-mono text-[11px] text-slate-300">${f.permit || 'N/A'}</td>
                 <td class="text-right space-x-1">
-                    <button type="button" onclick="FleetView.openVehicleModal('${f.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-sky-400">Edit</button>
-                    <button type="button" onclick="FleetView.deleteVehicle('${f.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-rose-400">Delete</button>
+                    <button type="button" onclick="FleetView.openVehicleModal('${f.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-sky-400">Edit</button>
+                    <button type="button" onclick="FleetView.deleteVehicle('${f.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-rose-400">Delete</button>
                 </td>
             </tr>
-        `).join('') || '<tr><td colspan="5" class="text-center text-slate-500 py-4">Koi gaadi darj nahi hai.</td></tr>';
+        `).join('') || '<tr><td colspan="7" class="text-center text-slate-500 py-4">Koi gaadi darj nahi hai.</td></tr>';
     },
 
     loadDriverData: function() {
@@ -119,8 +123,8 @@ window.FleetView = {
                 <td class="font-mono text-slate-400">${d.license || 'N/A'}</td>
                 <td class="font-mono text-amber-400">₹${d.advance || 0}</td>
                 <td class="text-right space-x-1">
-                    <button type="button" onclick="FleetView.openDriverModal('${d.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-sky-400">Edit</button>
-                    <button type="button" onclick="FleetView.deleteDriver('${d.id}')" class="btn btn-secondary px-2.5 py-1 text-[11px] text-rose-400">Delete</button>
+                    <button type="button" onclick="FleetView.openDriverModal('${d.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-sky-400">Edit</button>
+                    <button type="button" onclick="FleetView.deleteDriver('${d.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-rose-400">Delete</button>
                 </td>
             </tr>
         `).join('') || '<tr><td colspan="5" class="text-center text-slate-500 py-4">Koi driver darj nahi hai.</td></tr>';
@@ -131,7 +135,8 @@ window.FleetView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
-        let vehicle = { number: '', model: '', insurance: new Date().toISOString().split('T')[0] };
+        const today = new Date().toISOString().split('T')[0];
+        let vehicle = { number: '', model: '', insurance: today, puc: today, fitness: today, permit: today };
         if (id) {
             const fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
             const found = fleet.find(f => f.id === id);
@@ -139,23 +144,39 @@ window.FleetView = {
         }
 
         content.innerHTML = `
-            <div class="p-5 space-y-4 bg-slate-900 text-slate-100 rounded-xl">
+            <div class="p-5 space-y-3 bg-slate-900 text-slate-100 rounded-xl max-h-[85vh] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 class="text-sm font-bold text-amber-400">${id ? '✏️ Gaadi Update Karein' : '🚘 Nayi Gaadi Jodein'}</h3>
+                    <h3 class="text-sm font-bold text-amber-400">${id ? '✏️ Gaadi & Documents Update Karein' : '🚘 Nayi Gaadi aur Sabhi Documents Jodein'}</h3>
                     <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
                 </div>
                 <form onsubmit="FleetView.saveVehicle(event, '${id || ''}')" class="space-y-3 text-xs">
                     <div>
                         <label class="form-label text-slate-300">Vehicle Number *</label>
-                        <input type="text" id="fv-number" required value="${vehicle.number}" class="form-input bg-slate-950 text-white border-slate-700 font-mono" placeholder="RJ-27-PA-0000">
+                        <input type="text" id="fv-number" required value="${vehicle.number}" class="form-input bg-slate-950 text-white border-slate-700 font-mono uppercase" placeholder="RJ-27-PA-0000">
                     </div>
                     <div>
                         <label class="form-label text-slate-300">Vehicle Model / Type *</label>
-                        <input type="text" id="fv-model" required value="${vehicle.model}" class="form-input bg-slate-950 text-white border-slate-700" placeholder="Sedan / SUV / Dzire">
+                        <input type="text" id="fv-model" required value="${vehicle.model}" class="form-input bg-slate-950 text-white border-slate-700" placeholder="Sedan / SUV / Dzire / Ertiga">
                     </div>
-                    <div>
-                        <label class="form-label text-slate-300">Insurance Expiry Date</label>
-                        <input type="date" id="fv-insurance" value="${vehicle.insurance}" class="form-input bg-slate-950 text-white border-slate-700">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="form-label text-slate-300">Insurance Expiry</label>
+                            <input type="date" id="fv-insurance" value="${vehicle.insurance}" class="form-input bg-slate-950 text-white border-slate-700">
+                        </div>
+                        <div>
+                            <label class="form-label text-slate-300">PUC Expiry</label>
+                            <input type="date" id="fv-puc" value="${vehicle.puc}" class="form-input bg-slate-950 text-white border-slate-700">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="form-label text-slate-300">Fitness Expiry</label>
+                            <input type="date" id="fv-fitness" value="${vehicle.fitness}" class="form-input bg-slate-950 text-white border-slate-700">
+                        </div>
+                        <div>
+                            <label class="form-label text-slate-300">All India Permit / Tax Expiry</label>
+                            <input type="date" id="fv-permit" value="${vehicle.permit}" class="form-input bg-slate-950 text-white border-slate-700">
+                        </div>
                     </div>
                     <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                         <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="btn btn-secondary px-3 py-1.5">Radd</button>
@@ -172,12 +193,15 @@ window.FleetView = {
         const number = document.getElementById('fv-number').value.trim();
         const model = document.getElementById('fv-model').value.trim();
         const insurance = document.getElementById('fv-insurance').value;
+        const puc = document.getElementById('fv-puc').value;
+        const fitness = document.getElementById('fv-fitness').value;
+        const permit = document.getElementById('fv-permit').value;
 
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         if (id) {
-            fleet = fleet.map(f => f.id === id ? { ...f, number, model, insurance } : f);
+            fleet = fleet.map(f => f.id === id ? { ...f, number, model, insurance, puc, fitness, permit } : f);
         } else {
-            fleet.push({ id: 'F-' + Date.now(), number, model, insurance, status: 'Active' });
+            fleet.push({ id: 'F-' + Date.now(), number, model, insurance, puc, fitness, permit, status: 'Active' });
         }
         localStorage.setItem('aadesh_fleet', JSON.stringify(fleet));
 
