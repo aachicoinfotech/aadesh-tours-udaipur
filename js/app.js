@@ -15,13 +15,14 @@ window.App = {
     setupNavigation: function() {
         // Map navigation buttons/links to view renderers
         const navItems = [
-            { id: 'nav-dashboard', tab: 'dashboard', render: () => DashboardView?.render('main-content') },
-            { id: 'nav-trips', tab: 'trips', render: () => TripsView?.render('main-content') },
-            { id: 'nav-dutyslip', tab: 'dutyslip', render: () => DutySlipView?.render('main-content') },
-            { id: 'nav-billing', tab: 'billing', render: () => BillingView?.render('main-content') },
-            { id: 'nav-daybook', tab: 'daybook', render: () => DaybookView?.render('main-content') },
-            { id: 'nav-reports', tab: 'reports', render: () => ReportsView?.render('main-content') },
-            { id: 'nav-settings', tab: 'settings', render: () => SettingsView?.render('main-content') }
+            { id: 'nav-dashboard', tab: 'dashboard' },
+            { id: 'nav-fleet', tab: 'fleet' },
+            { id: 'nav-trips', tab: 'trips' },
+            { id: 'nav-dutyslip', tab: 'dutyslip' },
+            { id: 'nav-billing', tab: 'billing' },
+            { id: 'nav-daybook', tab: 'daybook' },
+            { id: 'nav-reports', tab: 'reports' },
+            { id: 'nav-settings', tab: 'settings' }
         ];
 
         navItems.forEach(item => {
@@ -29,19 +30,25 @@ window.App = {
             if (el) {
                 el.addEventListener('click', (e) => {
                     e.preventDefault();
-                    this.navigateTo(item.tab, item.render);
+                    this.navigateTo(item.tab);
                 });
             }
         });
     },
 
-    navigateTo: function(tabName, renderCallback) {
+    navigateTo: function(tabName) {
         this.currentTab = tabName;
 
-        // Highlight active nav item if applicable
-        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+        // Highlight active nav item
+        document.querySelectorAll('.nav-item').forEach(el => {
+            el.classList.remove('text-amber-400');
+            el.classList.add('text-slate-400');
+        });
         const activeNav = document.getElementById(`nav-${tabName}`);
-        if (activeNav) activeNav.classList.add('active');
+        if (activeNav) {
+            activeNav.classList.remove('text-slate-400');
+            activeNav.classList.add('text-amber-400');
+        }
 
         // Render appropriate view based on tab
         const container = document.getElementById('main-content');
@@ -50,9 +57,12 @@ window.App = {
         container.innerHTML = '';
 
         switch (tabName) {
-            -case 'dashboard':
+            case 'dashboard':
                 if (window.DashboardView) DashboardView.render('main-content');
                 else container.innerHTML = `<div class="vault-card text-center text-slate-400 py-10">Dashboard View Loading...</div>`;
+                break;
+            case 'fleet':
+                if (window.FleetView) FleetView.render('main-content');
                 break;
             case 'trips':
                 if (window.TripsView) TripsView.render('main-content');
