@@ -1,4 +1,4 @@
-// js/views/duty-slip-view.js - Dedicated Duty Slip with Full Width Modal & Trip Sync
+// js/views/duty-slip-view.js - Dedicated Duty Slip with Full Width Modal & Complete Trip Sync
 window.DutySlipView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -70,7 +70,6 @@ window.DutySlipView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
-        // Make modal container wider for proper viewing
         content.className = "vault-card w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl";
 
         const fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
@@ -150,7 +149,7 @@ window.DutySlipView = {
             company,
             reporting,
             rows: [
-                { day: 1, date, assignment: 'Local / Outstation', startKm: 0, endKm: 0, startTime: '09:00', endTime: '18:00' }
+                { day: 1, date, assignment: 'Local Duty', startKm: 0, endKm: 0, startTime: '09:00', endTime: '18:00' }
             ]
         };
 
@@ -158,18 +157,24 @@ window.DutySlipView = {
         slips.unshift(newSlip);
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
 
-        // Also sync/create corresponding entry in trips so it reflects everywhere
+        // Sync with Trips table
         let trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
         trips.unshift({
             id: slipId.replace('DS-', 'TRIP-'),
             date,
-            category: 'Duty Slip Trip',
+            category: 'Local',
             vehicle,
             driver,
             guestName,
             guestMob,
-            destination: reporting,
+            startKm: 0,
+            endKm: 0,
             totalKm: 0,
+            startTime: '09:00',
+            endTime: '18:00',
+            toll: 0,
+            parking: 0,
+            borderTax: 0,
             grandTotal: 0
         });
         localStorage.setItem('aadesh_trips', JSON.stringify(trips));
@@ -184,7 +189,6 @@ window.DutySlipView = {
         const content = document.getElementById('modal-content');
         if (!modal || !content) return;
 
-        // Ensure modal is wide enough
         content.className = "vault-card w-full max-w-4xl max-h-[95vh] overflow-y-auto bg-white text-slate-900 border border-slate-700 shadow-2xl";
 
         const slips = JSON.parse(localStorage.getItem('aadesh_duty_slips') || '[]');
@@ -298,7 +302,6 @@ window.DutySlipView = {
         slip.rows[index][field] = field.includes('Km') ? parseFloat(value) || 0 : value;
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
 
-        // Calculate total km for this row
         const start = parseFloat(slip.rows[index].startKm) || 0;
         const end = parseFloat(slip.rows[index].endKm) || 0;
         const rowTotal = Math.max(0, end - start);
@@ -306,7 +309,6 @@ window.DutySlipView = {
         const totalCell = document.getElementById(`total-km-${index}`);
         if (totalCell) totalCell.innerText = rowTotal;
 
-        // Sync changes with trips table
         this.syncWithTrips(slip);
         this.loadDutySlipsData();
     },
@@ -316,13 +318,26 @@ window.DutySlipView = {
         const tripId = slip.id.replace('DS-', 'TRIP-');
         
         let totalKm = 0;
+        let startKm = slip.rows[0]?.startKm || 0;
+        let endKm = slip.rows[slip.rows.length - 1]?.endKm || 0;
+        let startTime = slip.rows[0]?.startTime || '09:00';
+        let endTime = slip.rows[slip.rows.length - 1]?.endTime || '18:00';
+
         slip.rows.forEach(r => {
             totalKm += Math.max(0, (parseFloat(r.endKm) || 0) - (parseFloat(r.startKm) || 0));
         });
 
         trips = trips.map(t => {
             if (t.id === tripId) {
-                return { ...t, totalKm, destination: slip.rows[0]?.assignment || t.destination };
+                return { 
+                    ...t, 
+                    startKm, 
+                    endKm, 
+                    totalKm, 
+                    startTime, 
+                    endTime, 
+                    grandTotal: (totalKm * 12) + (t.toll || 0) + (t.parking || 0) + (t.borderTax || 0)
+                };
             }
             return t;
         });
@@ -349,7 +364,6 @@ window.DutySlipView = {
         slips = slips.filter(s => s.id !== slipId);
         localStorage.setItem('aadesh_duty_slips', JSON.stringify(slips));
 
-        // Also remove from trips
         let trips = JSON.parse(localStorage.getItem('aadesh_trips') || '[]');
         const tripId = slipId.replace('DS-', 'TRIP-');
         trips = trips.filter(t => t.id !== tripId);
