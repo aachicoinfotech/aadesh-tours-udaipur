@@ -1,4 +1,4 @@
-// js/views/fleet-view.js - Complete Fleet & Document Management Vault
+// js/views/fleet-view.js - Fleet & Complete Legal Document Management Vault
 window.FleetView = {
     render: function(containerId) {
         const container = document.getElementById(containerId);
@@ -8,7 +8,7 @@ window.FleetView = {
             <div class="space-y-4">
                 <div class="vault-card flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div>
-                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet & Complete Document Operations</h2>
+                        <h2 class="text-base font-bold text-amber-400">🚘 Fleet & Legal Documents Operations</h2>
                         <p class="text-xs text-slate-400">Aadesh Tours Udaipur - Cab Management with All Legal Documents</p>
                     </div>
                     <div class="flex gap-2">
@@ -28,7 +28,7 @@ window.FleetView = {
 
                 <!-- Cabs Section -->
                 <div id="fleet-cabs-section" class="vault-card space-y-3">
-                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Document Expiry Status</h3>
+                    <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Registered Cabs & Legal Expiry Status</h3>
                     <div class="overflow-x-auto">
                         <table class="tally-table">
                             <thead>
@@ -38,7 +38,8 @@ window.FleetView = {
                                     <th>Insurance</th>
                                     <th>PUC</th>
                                     <th>Fitness</th>
-                                    <th>Permit / Tax</th>
+                                    <th>Permit</th>
+                                    <th>Road Tax</th>
                                     <th class="text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -103,12 +104,13 @@ window.FleetView = {
                 <td class="font-mono text-[11px] text-slate-300">${f.puc || 'N/A'}</td>
                 <td class="font-mono text-[11px] text-slate-300">${f.fitness || 'N/A'}</td>
                 <td class="font-mono text-[11px] text-slate-300">${f.permit || 'N/A'}</td>
+                <td class="font-mono text-[11px] text-slate-300">${f.tax || 'N/A'}</td>
                 <td class="text-right space-x-1">
                     <button type="button" onclick="FleetView.openVehicleModal('${f.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-sky-400">Edit</button>
                     <button type="button" onclick="FleetView.deleteVehicle('${f.id}')" class="btn btn-secondary px-2 py-1 text-[10px] text-rose-400">Delete</button>
                 </td>
             </tr>
-        `).join('') || '<tr><td colspan="7" class="text-center text-slate-500 py-4">Koi gaadi darj nahi hai.</td></tr>';
+        `).join('') || '<tr><td colspan="8" class="text-center text-slate-500 py-4">Koi gaadi darj nahi hai.</td></tr>';
     },
 
     loadDriverData: function() {
@@ -136,7 +138,7 @@ window.FleetView = {
         if (!modal || !content) return;
 
         const today = new Date().toISOString().split('T')[0];
-        let vehicle = { number: '', model: '', insurance: today, puc: today, fitness: today, permit: today };
+        let vehicle = { number: '', model: '', insurance: today, puc: today, fitness: today, permit: today, tax: today };
         if (id) {
             const fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
             const found = fleet.find(f => f.id === id);
@@ -144,9 +146,9 @@ window.FleetView = {
         }
 
         content.innerHTML = `
-            <div class="p-5 space-y-3 bg-slate-900 text-slate-100 rounded-xl max-h-[85vh] overflow-y-auto">
+            <div class="p-5 space-y-3 bg-slate-900 text-slate-100 rounded-xl max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-                    <h3 class="text-sm font-bold text-amber-400">${id ? '✏️ Gaadi & Documents Update Karein' : '🚘 Nayi Gaadi aur Sabhi Documents Jodein'}</h3>
+                    <h3 class="text-sm font-bold text-amber-400">${id ? '✏️ Gaadi & Documents Update Karein' : '🚘 Nayi Gaadi aur Legal Documents Jodein'}</h3>
                     <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="text-slate-400 hover:text-white text-lg font-bold">&times;</button>
                 </div>
                 <form onsubmit="FleetView.saveVehicle(event, '${id || ''}')" class="space-y-3 text-xs">
@@ -174,9 +176,13 @@ window.FleetView = {
                             <input type="date" id="fv-fitness" value="${vehicle.fitness}" class="form-input bg-slate-950 text-white border-slate-700">
                         </div>
                         <div>
-                            <label class="form-label text-slate-300">All India Permit / Tax Expiry</label>
+                            <label class="form-label text-slate-300">All India Permit Expiry</label>
                             <input type="date" id="fv-permit" value="${vehicle.permit}" class="form-input bg-slate-950 text-white border-slate-700">
                         </div>
+                    </div>
+                    <div>
+                        <label class="form-label text-slate-300">Road Tax / Passenger Tax Expiry</label>
+                        <input type="date" id="fv-tax" value="${vehicle.tax}" class="form-input bg-slate-950 text-white border-slate-700">
                     </div>
                     <div class="flex justify-end gap-2 pt-3 border-t border-slate-800">
                         <button type="button" onclick="document.getElementById('modal-container').classList.add('hidden')" class="btn btn-secondary px-3 py-1.5">Radd</button>
@@ -196,12 +202,13 @@ window.FleetView = {
         const puc = document.getElementById('fv-puc').value;
         const fitness = document.getElementById('fv-fitness').value;
         const permit = document.getElementById('fv-permit').value;
+        const tax = document.getElementById('fv-tax').value;
 
         let fleet = JSON.parse(localStorage.getItem('aadesh_fleet') || '[]');
         if (id) {
-            fleet = fleet.map(f => f.id === id ? { ...f, number, model, insurance, puc, fitness, permit } : f);
+            fleet = fleet.map(f => f.id === id ? { ...f, number, model, insurance, puc, fitness, permit, tax } : f);
         } else {
-            fleet.push({ id: 'F-' + Date.now(), number, model, insurance, puc, fitness, permit, status: 'Active' });
+            fleet.push({ id: 'F-' + Date.now(), number, model, insurance, puc, fitness, permit, tax, status: 'Active' });
         }
         localStorage.setItem('aadesh_fleet', JSON.stringify(fleet));
 
