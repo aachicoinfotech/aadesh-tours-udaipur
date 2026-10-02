@@ -1,14 +1,8 @@
-// js/app.js - Foolproof Safe Global Router
+// js/app.js - Aadesh Tours Udaipur Fleet OS Main Controller
+
 document.addEventListener('DOMContentLoaded', () => {
-    try {
-        setupPinLock();
-        setupTabs();
-    } catch (err) {
-        console.error("App initialization error:", err);
-        // Fallback: Agar koi error aaye toh direct main app dikha do
-        document.getElementById('pin-screen')?.classList.add('hidden');
-        document.getElementById('main-app')?.classList.remove('hidden');
-    }
+    setupPinLock();
+    setupTabs();
 });
 
 function setupPinLock() {
@@ -70,15 +64,8 @@ function updateDots(dots, count) {
 }
 
 function initApp() {
-    try {
-        if (window.DashboardView && typeof window.DashboardView.render === 'function') {
-            window.DashboardView.render('tab-dashboard');
-        } else {
-            const pane = document.getElementById('tab-dashboard');
-            if (pane) pane.innerHTML = '<div class="p-4 text-slate-400">Dashboard load ho raha hai...</div>';
-        }
-    } catch(e) {
-        console.error("Dashboard render error:", e);
+    if (window.DashboardView && typeof window.DashboardView.render === 'function') {
+        window.DashboardView.render('tab-dashboard');
     }
     updateLiveGalla();
 }
@@ -95,23 +82,16 @@ function setupTabs() {
             if (targetPane) {
                 targetPane.classList.remove('hidden');
                 
-                try {
-                    if (targetTabId === 'tab-dashboard' && window.DashboardView?.render) {
-                        window.DashboardView.render('tab-dashboard');
-                    } else if (targetTabId === 'tab-fleet' && window.FleetView?.render) {
-                        window.FleetView.render('tab-fleet');
-                    } else if (targetTabId === 'tab-trips' && window.TripsView?.render) {
-                        window.TripsView.render('tab-trips');
-                    } else if (targetTabId === 'tab-billing' && window.BillingView?.render) {
-                        window.BillingView.render('tab-billing');
-                    } else if (targetTabId === 'tab-settings' && window.SettingsView?.render) {
-                        window.SettingsView.render('tab-settings');
-                    } else {
-                        targetPane.innerHTML = `<div class="p-6 text-center text-slate-400">Yeh section jald hi uplabdh hoga.</div>`;
-                    }
-                } catch(err) {
-                    console.error("Tab render error:", err);
-                    targetPane.innerHTML = `<div class="p-6 text-center text-rose-400">View load karne me samasya aayi hai.</div>`;
+                if (targetTabId === 'tab-dashboard' && window.DashboardView?.render) {
+                    window.DashboardView.render('tab-dashboard');
+                } else if (targetTabId === 'tab-fleet' && window.FleetView?.render) {
+                    window.FleetView.render('tab-fleet');
+                } else if (targetTabId === 'tab-trips' && window.TripsView?.render) {
+                    window.TripsView.render('tab-trips');
+                } else if (targetTabId === 'tab-billing' && window.BillingView?.render) {
+                    window.BillingView.render('tab-billing');
+                } else if (targetTabId === 'tab-settings' && window.SettingsView?.render) {
+                    window.SettingsView.render('tab-settings');
                 }
             }
 
