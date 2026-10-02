@@ -7,8 +7,6 @@
   
   <link rel="manifest" href="./manifest.json">
   <meta name="theme-color" content="#0f172a">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -18,17 +16,8 @@
       theme: {
         extend: {
           colors: {
-            slate: {
-              950: '#090d16',
-              900: '#0f172a',
-              800: '#1e293b',
-              700: '#334155'
-            },
-            amber: {
-              400: '#fbbf24',
-              500: '#f59e0b',
-              600: '#d97706'
-            }
+            slate: { 950: '#090d16', 900: '#0f172a', 800: '#1e293b', 700: '#334155' },
+            amber: { 400: '#fbbf24', 500: '#f59e0b', 600: '#d97706' }
           }
         }
       }
@@ -36,149 +25,40 @@
   </script>
 
   <style>
-    body {
-      background-color: #090d16;
-      color: #f1f5f9;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-    }
-    .vault-card {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(51, 65, 85, 0.6);
-      border-radius: 1rem;
-      padding: 1rem;
-    }
-    .stat-metric {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(51, 65, 85, 0.6);
-      border-radius: 0.875rem;
-      padding: 0.75rem;
-    }
-    .stat-label {
-      font-size: 0.7rem;
-      color: #94a3b8;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .stat-value {
-      font-family: ui-monospace, monospace;
-      font-size: 1.15rem;
-      font-weight: 800;
-      margin-top: 0.25rem;
-    }
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 0.625rem;
-      font-weight: 700;
-      transition: all 0.15s ease-in-out;
-      cursor: pointer;
-    }
-    .btn:active {
-      transform: scale(0.97);
-    }
-    .btn-primary {
-      background: #f59e0b;
-      color: #090d16;
-    }
-    .btn-primary:hover {
-      background: #fbbf24;
-    }
-    .btn-secondary {
-      background: #1e293b;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-    }
-    .btn-secondary:hover {
-      background: #334155;
-    }
-    .btn-success {
-      background: #10b981;
-      color: #ffffff;
-    }
-    .btn-danger {
-      background: #ef4444;
-      color: #ffffff;
-    }
-    .form-label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #94a3b8;
-      margin-bottom: 0.25rem;
-    }
-    .form-input, .form-select {
-      width: 100%;
-      background: #090d16;
-      border: 1px solid #334155;
-      color: #ffffff;
-      border-radius: 0.5rem;
-      padding: 0.5rem 0.75rem;
-      outline: none;
-    }
-    .form-input:focus, .form-select:focus {
-      border-color: #f59e0b;
-    }
-    .badge-status {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.2rem 0.5rem;
-      border-radius: 9999px;
-      font-size: 0.65rem;
-      font-weight: 800;
-      letter-spacing: 0.05em;
-    }
-    .badge-active {
-      background: rgba(16, 185, 129, 0.15);
-      color: #34d399;
-      border: 1px solid rgba(16, 185, 129, 0.3);
-    }
-    .tally-table {
-      width: 100%;
-      text-align: left;
-      border-collapse: collapse;
-      font-size: 0.75rem;
-    }
-    .tally-table th {
-      padding: 0.5rem;
-      color: #64748b;
-      border-bottom: 1px solid #1e293b;
-      font-weight: 700;
-    }
-    .tally-table td {
-      padding: 0.6rem 0.5rem;
-      border-bottom: 1px solid rgba(30, 41, 59, 0.6);
-    }
+    body { background-color: #090d16; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; user-select: none; }
+    .vault-card { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 1rem; padding: 1rem; }
+    .stat-metric { background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(51, 65, 85, 0.6); border-radius: 0.875rem; padding: 0.75rem; }
+    .stat-label { font-size: 0.7rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; }
+    .stat-value { font-family: ui-monospace, monospace; font-size: 1.15rem; font-weight: 800; margin-top: 0.25rem; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; border-radius: 0.625rem; font-weight: 700; transition: all 0.15s ease-in-out; cursor: pointer; }
+    .btn-primary { background: #f59e0b; color: #090d16; }
+    .btn-secondary { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; }
+    .btn-success { background: #10b981; color: #ffffff; }
+    .form-label { display: block; font-size: 0.75rem; font-weight: 600; color: #94a3b8; margin-bottom: 0.25rem; }
+    .form-input, .form-select { width: 100%; background: #090d16; border: 1px solid #334155; color: #ffffff; border-radius: 0.5rem; padding: 0.5rem 0.75rem; outline: none; }
+    .badge-status { display: inline-flex; align-items: center; padding: 0.2rem 0.5rem; border-radius: 9999px; font-size: 0.65rem; font-weight: 800; }
+    .tally-table { width: 100%; text-align: left; border-collapse: collapse; font-size: 0.75rem; }
+    .tally-table th { padding: 0.5rem; color: #64748b; border-bottom: 1px solid #1e293b; font-weight: 700; }
+    .tally-table td { padding: 0.6rem 0.5rem; border-bottom: 1px solid rgba(30, 41, 59, 0.6); }
   </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-20">
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-24">
 
-  <!-- ==================== 1. MASTER PIN LOCK SCREEN ==================== -->
+  <!-- PIN LOCK SCREEN -->
   <div id="pin-screen" class="fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-4">
     <div class="w-full max-w-xs space-y-6 text-center">
       <div class="space-y-1">
-        <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl">
-          🚕
-        </div>
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-3xl">🚕</div>
         <h1 class="text-xl font-black text-white tracking-wider pt-2">AADESH TOURS</h1>
         <p class="text-xs text-amber-400 font-semibold tracking-widest uppercase">Fleet & Accounting Vault</p>
       </div>
-
-      <!-- PIN Dots -->
       <div class="flex justify-center gap-3 py-2">
-        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent transition-all"></div>
-        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent transition-all"></div>
-        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent transition-all"></div>
-        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent transition-all"></div>
+        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent"></div>
+        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent"></div>
+        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent"></div>
+        <div class="pin-dot w-3.5 h-3.5 rounded-full border-2 border-slate-700 bg-transparent"></div>
       </div>
-
       <p id="pin-error-msg" class="text-xs text-rose-400 font-semibold h-4"></p>
-
-      <!-- Keypad -->
       <div class="grid grid-cols-3 gap-2.5">
         <button class="pin-key btn btn-secondary py-3 text-lg font-bold font-mono" data-val="1">1</button>
         <button class="pin-key btn btn-secondary py-3 text-lg font-bold font-mono" data-val="2">2</button>
@@ -197,81 +77,82 @@
     </div>
   </div>
 
-  <!-- ==================== 2. MAIN APPLICATION ROOT ==================== -->
+  <!-- MAIN APP -->
   <div id="main-app" class="hidden">
-    <!-- Top Global Sticky Header -->
     <header class="sticky top-0 z-30 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 py-2.5 flex items-center justify-between">
       <div class="flex items-center gap-2.5">
-        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-base">
-          🚕
-        </div>
+        <div class="w-8 h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-base">🚕</div>
         <div>
-          <h1 id="header-biz-title" class="text-sm font-black text-white tracking-wide">AADESH TOURS</h1>
+          <h1 class="text-sm font-black text-white tracking-wide">AADESH TOURS</h1>
           <span class="text-[10px] text-amber-400 font-mono block">UDAIPUR FLEET OS</span>
         </div>
       </div>
-
       <div class="flex items-center gap-2">
         <div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950 border border-slate-800 text-xs">
           <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
           <span class="text-[10px] text-slate-400">गल्ला:</span>
           <span id="header-galla-amount" class="font-mono font-bold text-amber-400">₹0</span>
         </div>
-
-        <button id="btn-lock-app" class="btn btn-secondary px-2.5 py-1 text-xs">
-          🔒
-        </button>
+        <button id="btn-lock-app" class="btn btn-secondary px-2.5 py-1 text-xs">🔒</button>
       </div>
     </header>
 
-    <!-- Main Dynamic Tab Container Panes -->
     <main class="max-w-5xl mx-auto p-3 sm:p-4 space-y-4">
       <div id="tab-dashboard" class="tab-pane space-y-4"></div>
       <div id="tab-fleet" class="tab-pane hidden space-y-4"></div>
       <div id="tab-trips" class="tab-pane hidden space-y-4"></div>
       <div id="tab-billing" class="tab-pane hidden space-y-4"></div>
+      <div id="tab-daybook" class="tab-pane hidden space-y-4"></div>
+      <div id="tab-reports" class="tab-pane hidden space-y-4"></div>
       <div id="tab-settings" class="tab-pane hidden space-y-4"></div>
     </main>
 
-    <!-- Bottom Navigation Bar (5 Core Tabs) -->
-    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-2 py-1.5 flex items-center justify-around">
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-2 text-amber-400" data-tab="tab-dashboard">
-        <span class="text-base">📊</span>
-        <span class="text-[10px] font-bold mt-0.5">डैशबोर्ड</span>
+    <!-- Expanded Bottom Nav (7 Tabs) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 px-1 py-1.5 flex items-center justify-around">
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-amber-400" data-tab="tab-dashboard">
+        <span class="text-sm">📊</span><span class="text-[9px] font-bold mt-0.5">डैशबोर्ड</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 hover:text-amber-400" data-tab="tab-fleet">
-        <span class="text-base">🚘</span>
-        <span class="text-[10px] font-bold mt-0.5">गाड़ियां</span>
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-fleet">
+        <span class="text-sm">🚘</span><span class="text-[9px] font-bold mt-0.5">गाड़ियां</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 hover:text-amber-400" data-tab="tab-trips">
-        <span class="text-base">📋</span>
-        <span class="text-[10px] font-bold mt-0.5">ट्रिप्स</span>
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-trips">
+        <span class="text-sm">📋</span><span class="text-[9px] font-bold mt-0.5">ट्रिप्स</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 hover:text-amber-400" data-tab="tab-billing">
-        <span class="text-base">💳</span>
-        <span class="text-[10px] font-bold mt-0.5">बिलिंग</span>
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-billing">
+        <span class="text-sm">💳</span><span class="text-[9px] font-bold mt-0.5">बिलिंग</span>
       </button>
-      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-2 text-slate-400 hover:text-amber-400" data-tab="tab-settings">
-        <span class="text-base">⚙️</span>
-        <span class="text-[10px] font-bold mt-0.5">सेटिंग्स</span>
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-daybook">
+        <span class="text-sm">📖</span><span class="text-[9px] font-bold mt-0.5">डेबुक</span>
+      </button>
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-reports">
+        <span class="text-sm">📈</span><span class="text-[9px] font-bold mt-0.5">रिपोर्ट्स</span>
+      </button>
+      <button class="nav-tab-btn flex flex-col items-center justify-center py-1 px-1 text-slate-400" data-tab="tab-settings">
+        <span class="text-sm">⚙️</span><span class="text-[9px] font-bold mt-0.5">सेटिंग्स</span>
       </button>
     </nav>
   </div>
 
-  <!-- Global Modal Container -->
   <div id="modal-container" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3">
     <div id="modal-content" class="vault-card w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-700 shadow-2xl"></div>
   </div>
 
-  <!-- All View Scripts loaded globally -->
+  <!-- Service Scripts -->
+  <script src="./js/services/daybook-service.js"></script>
+  <script src="./js/services/reports-service.js"></script>
+  <script src="./js/services/expense-service.js"></script>
+  <script src="./js/services/driver-settlement.js"></script>
+  
+  <!-- View Scripts -->
   <script src="./js/views/dashboard-view.js"></script>
   <script src="./js/views/fleet-view.js"></script>
   <script src="./js/views/trips-view.js"></script>
   <script src="./js/views/duty-slip-view.js"></script>
   <script src="./js/views/billing-view.js"></script>
+  <script src="./js/views/daybook-view.js"></script>
+  <script src="./js/views/reports-view.js"></script>
   <script src="./js/views/settings-view.js"></script>
   
-  <!-- Main App Router Script -->
   <script src="./js/app.js"></script>
 </body>
 </html>
